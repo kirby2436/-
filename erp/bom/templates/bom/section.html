@@ -19,9 +19,10 @@
 <div class="card">
   <div class="card-title"><h2>BOM 목록</h2><span class="muted small">{{ totals.rows }}건 / 수량 합계 {{ totals.qty }}</span></div>
   {% if page.object_list %}
+  <div class="only-desktop">
   <div class="table-wrap">
     <table class="table table-compact">
-      <thead><tr><th>Ass Mark</th><th>Profile</th><th class="num">Length(mm)</th><th class="num">수량</th><th>FINISH</th><th>LOCATION</th><th>구성 상태</th><th>비고</th><th>삭제</th></tr></thead>
+      <thead><tr><th>Ass Mark</th><th>Profile</th><th class="num">Length(mm)</th><th class="num">수량</th><th>FINISH</th><th>LOCATION</th><th>구성 상태</th><th>비고</th><th></th></tr></thead>
       <tbody>
       {% for it in page %}
         <tr>
@@ -31,24 +32,34 @@
           <td class="num">{{ it.quantity }}</td>
           <td>{{ it.finish }}</td>
           <td>{{ it.location }}</td>
-          <td class="nowrap">{% if it.configured %}<span class="badge badge-done">구성 완료</span>{% elif it.product_id %}<span class="badge badge-warn">구성 없음</span>{% else %}<span class="badge badge-warn">품목 미등록</span>{% endif %}</td>
-          <td>
-            <form method="post" action="{% url 'bom:item_note' it.pk %}" class="bom-note-form">{% csrf_token %}
-              <input type="hidden" name="page" value="{{ page.number }}">
-              <input type="text" name="note" value="{{ it.note }}" maxlength="200" aria-label="비고 ({{ it.ass_mark }})">
-              <button type="submit" class="btn btn-sm">저장</button>
-            </form>
-          </td>
-          <td>
-            <form method="post" action="{% url 'bom:item_delete' it.pk %}" data-confirm="{{ it.ass_mark }} 행을 삭제할까요?">{% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-danger">삭제</button>
-            </form>
-          </td>
+          <td class="nowrap">{% include "bom/_status.html" %}</td>
+          <td>{% include "bom/_note.html" %}</td>
+          <td>{% include "bom/_delete.html" %}</td>
         </tr>
       {% endfor %}
       </tbody>
       <tfoot><tr class="bom-totals"><td colspan="3">합계 ({{ totals.rows }}건)</td><td class="num">{{ totals.qty }}</td><td colspan="5"></td></tr></tfoot>
     </table>
+  </div>
+  </div>
+  <div class="only-mobile">
+    <ul class="card-list">
+      {% for it in page %}
+      <li class="card-item">
+        <div class="card-item-title">{{ it.ass_mark }} <span class="muted">{{ it.profile_text }}</span></div>
+        <div class="card-item-meta">{% include "bom/_status.html" %}</div>
+        <dl class="kv">
+          <dt>Length(mm)</dt><dd>{{ it.length_mm|floatformat:"-2" }}</dd>
+          <dt>수량</dt><dd>{{ it.quantity }}</dd>
+          <dt>FINISH</dt><dd>{{ it.finish|default:"-" }}</dd>
+          <dt>LOCATION</dt><dd>{{ it.location|default:"-" }}</dd>
+          <dt>비고</dt><dd>{% include "bom/_note.html" %}</dd>
+        </dl>
+        <div style="margin-top:.5rem">{% include "bom/_delete.html" %}</div>
+      </li>
+      {% endfor %}
+      <li class="card-item bom-totals-card"><strong>합계 {{ totals.rows }}건 / 수량 {{ totals.qty }}</strong></li>
+    </ul>
   </div>
   {% if page.has_other_pages %}
   <nav class="pagination" aria-label="페이지">

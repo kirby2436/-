@@ -1,6 +1,4 @@
 .bom-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-.bom-note-form { display: flex; gap: .25rem; align-items: center; min-width: 180px; }
-.bom-note-form input { min-width: 0; flex: 1 1 auto; padding: .2rem .4rem; }
 .bom-totals td { font-weight: 700; background: #eef1f6; }
 .bom-row-error td { background: var(--danger-soft); }
 .bom-row-warn td { background: var(--warn-soft); }
@@ -10,11 +8,24 @@
 .bom-mode label { display: flex; gap: .5rem; align-items: flex-start; font-weight: 600; }
 .bom-mode input { width: auto; margin-top: .25rem; }
 .bom-resolve-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 1rem; }
-.bom-slot { display: grid; grid-template-columns: 1fr 5.5rem; gap: .35rem; align-items: center; margin-bottom: .5rem; }
-.bom-slot .bom-ns { grid-column: 1 / -1; font-size: .85rem; display: flex; gap: .4rem; align-items: center; }
-.bom-slot .bom-ns input { width: auto; }
-.bom-slot-label { font-size: .8rem; color: var(--muted); grid-column: 1 / -1; margin: 0; }
 .bom-summary { font-size: .9rem; }
 @media (max-width: 720px) {
-  .bom-note-form { min-width: 150px; }
+  }
+.btn { white-space: nowrap; }
+.bom-note-text { display: block; overflow-wrap: anywhere; margin-bottom: .2rem; }
+.bom-note-edit summary { list-style: none; display: inline-block; cursor: pointer; }
+.bom-note-edit summary::-webkit-details-marker { display: none; }
+.bom-note-form { display: flex; gap: .25rem; align-items: center; margin-top: .3rem; min-width: 200px; }
+.bom-note-form input { min-width: 0; flex: 1 1 auto; padding: .2rem .4rem; }
+.bom-del { background: transparent; color: var(--muted); border-color: var(--border); }
+.bom-del:hover { background: var(--danger-soft); color: var(--danger); border-color: #f0a79f; }
+.bom-hint { margin: 0 0 .35rem; }
+.bom-slot { display: grid; grid-template-columns: minmax(0, 1fr) 5rem auto; gap: .4rem; align-items: center; margin-bottom: .4rem; }
+.bom-slot input[type="text"], .bom-slot input[type="number"] { min-width: 0; width: 100%; }
+.bom-ns { display: flex; gap: .3rem; align-items: center; font-size: .85rem; white-space: nowrap; margin: 0; }
+.bom-ns input { width: auto; }
+@media (max-width: 720px) {
+  .bom-slot { grid-template-columns: minmax(0, 1fr) 5rem; }
+  .bom-slot .bom-ns { grid-column: 1 / -1; }
+  .bom-note-form { min-width: 0; }
 }

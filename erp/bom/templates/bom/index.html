@@ -10,7 +10,7 @@
 </form>
 <div class="card">
   {% if page.object_list %}
-  <div class="table-wrap">
+  <div class="only-desktop"><div class="table-wrap">
     <table class="table">
       <thead><tr><th>프로젝트</th><th>구간</th><th>층</th><th class="num">BOM 건수</th><th class="num">품목 미등록</th><th></th></tr></thead>
       <tbody>
@@ -26,6 +26,18 @@
       {% endfor %}
       </tbody>
     </table>
+  </div></div>
+  <div class="only-mobile">
+    <ul class="card-list">
+      {% for s in page %}
+      <li class="card-item">
+        <div class="card-item-title">{{ s.name }}{% if s.floor %} <span class="muted">{{ s.floor }}</span>{% endif %}</div>
+        <div class="card-item-meta">{{ s.project.code }} {{ s.project.name }}</div>
+        <dl class="kv"><dt>BOM 건수</dt><dd>{{ s.bom_count }}</dd><dt>품목 미등록</dt><dd>{% if s.unresolved_count %}<span class="badge badge-warn">미등록 {{ s.unresolved_count }}건</span>{% else %}0{% endif %}</dd></dl>
+        <a class="btn btn-sm" href="{% url 'bom:section' s.pk %}" style="margin-top:.5rem">BOM 보기</a>
+      </li>
+      {% endfor %}
+    </ul>
   </div>
   {% else %}
   <p class="muted">조건에 맞는 구간이 없습니다.</p>

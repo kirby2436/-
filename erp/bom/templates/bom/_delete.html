@@ -1,0 +1,1 @@
+<form method="post" action="{% url 'bom:item_delete' it.pk %}" data-confirm="{{ it.ass_mark }} 행을 삭제할까요?" class="inline-form">{% csrf_token %}<button type="submit" class="btn btn-sm bom-del">삭제</button></form>

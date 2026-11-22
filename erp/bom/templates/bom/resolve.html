@@ -31,11 +31,11 @@
       </div>
       {% for g in f.groups %}
       <h3>{{ g.label }}</h3>
+      <p class="field-help bom-hint">규격 입력 예: W500 (목록에 없으면 새 규격으로 추가됩니다)</p>
       {% for s in g.slots %}
       <div class="bom-slot">
-        <p class="bom-slot-label">{{ g.label }} {{ s.slot }}</p>
-        <input type="text" list="parts-{{ g.kind }}" name="f{{ fi }}-{{ g.kind }}{{ s.slot }}-name" value="{{ s.name }}" maxlength="50" placeholder="규격" aria-label="{{ g.label }} {{ s.slot }} 규격">
-        <input type="number" min="1" max="1000" name="f{{ fi }}-{{ g.kind }}{{ s.slot }}-qty" value="{{ s.qty }}" aria-label="{{ g.label }} {{ s.slot }} 수량">
+        <input type="text" list="parts-{{ g.kind }}" name="f{{ fi }}-{{ g.kind }}{{ s.slot }}-name" value="{{ s.name }}" maxlength="50" placeholder="{{ g.label }} {{ s.slot }} 규격" aria-label="{{ g.label }} {{ s.slot }} 규격">
+        <input type="number" min="1" max="1000" name="f{{ fi }}-{{ g.kind }}{{ s.slot }}-qty" value="{{ s.qty }}" aria-label="{{ g.label }} {{ s.slot }} 수량" title="수량">
         <label class="bom-ns"><input type="checkbox" name="f{{ fi }}-{{ g.kind }}{{ s.slot }}-ns" {% if s.ns %}checked{% endif %}> 비규격</label>
       </div>
       {% endfor %}

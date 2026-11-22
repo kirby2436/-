@@ -1,0 +1,11 @@
+<div class="bom-note">
+  {% if it.note %}<span class="bom-note-text">{{ it.note }}</span>{% endif %}
+  <details class="bom-note-edit">
+    <summary class="btn btn-sm">{% if it.note %}수정{% else %}비고 입력{% endif %}</summary>
+    <form method="post" action="{% url 'bom:item_note' it.pk %}" class="bom-note-form">{% csrf_token %}
+      <input type="hidden" name="page" value="{{ page.number }}">
+      <input type="text" name="note" value="{{ it.note }}" maxlength="200" aria-label="비고 ({{ it.ass_mark }})">
+      <button type="submit" class="btn btn-sm btn-primary">저장</button>
+    </form>
+  </details>
+</div>

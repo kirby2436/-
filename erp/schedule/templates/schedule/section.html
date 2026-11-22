@@ -18,7 +18,7 @@
 
 <div class="card">
   <div class="card-title"><h2>Activity 일정</h2></div>
-  <div class="table-wrap"><table class="table">
+  <div class="only-desktop"><div class="table-wrap"><table class="table">
     <thead><tr><th>Activity</th><th>계획일</th><th>실적일</th><th>상태</th></tr></thead>
     <tbody>{% for r in rows %}
       <tr class="state-{{ r.state.code }}" id="act-{{ r.type.code }}">
@@ -45,18 +45,42 @@
         </td>
         <td class="nowrap">{% include "schedule/_state.html" with state=r.state %}</td>
       </tr>{% endfor %}
-    </tbody></table></div>
+    </tbody></table></div></div>
+  <div class="only-mobile"><ul class="card-list">{% for r in rows %}
+    <li class="card-item state-{{ r.state.code }}">
+      <div class="card-item-title"><strong>{{ r.type.mark|default:r.type.code }}</strong> {{ r.type.name }}</div>
+      <dl class="kv"><dt>계획일</dt><dd>{{ r.sa.planned_date|date:"Y-m-d" }}</dd>
+        <dt>상태</dt><dd>{% include "schedule/_state.html" with state=r.state %}</dd>
+        <dt>실적일</dt><dd>
+        {% if r.manual %}
+          <form method="post" action="{% url 'schedule:actual' section.pk %}" class="field {% if r.error %}has-error{% endif %}" style="margin:0">
+            {% csrf_token %}<input type="hidden" name="code" value="{{ r.type.code }}">
+            <div class="date-form">
+              <input type="date" name="actual_date" value="{{ r.value|date:'Y-m-d' }}" aria-label="{{ r.type.name }} 실적일">
+              <button class="btn btn-sm btn-primary" type="submit" name="action" value="save">저장</button>
+              {% if r.sa.actual_date %}<button class="btn btn-sm" type="submit" name="action" value="clear">해제</button>{% endif %}
+            </div>
+            {% if r.error %}<div class="field-error">{{ r.error }}</div>{% endif %}
+          </form>
+        {% else %}
+          {% if r.sa.actual_date %}{{ r.sa.actual_date|date:"Y-m-d" }}{% else %}-{% endif %}
+          <div class="small muted">{% if r.type.actual_source == "BOM_UPLOAD" %}BOM 업로드 시 자동 반영 · <a href="{% url 'bom:section' section.pk %}">구간 BOM으로 이동</a>{% else %}구간의 출고확정일과 완료 표시로 자동 반영 · <a href="{% url 'projects:detail' project.pk %}">프로젝트에서 구간 수정</a>{% endif %}</div>
+        {% endif %}</dd></dl>
+    </li>{% endfor %}</ul></div>
 </div>
 
 <div class="card">
   <div class="card-title"><h2>변경 이력</h2></div>
   {% if history %}
-  <div class="table-wrap"><table class="table table-compact">
+  <div class="only-desktop"><div class="table-wrap"><table class="table table-compact">
     <thead><tr><th>일시</th><th>사용자</th><th>Activity</th><th>실적일 변경</th></tr></thead>
     <tbody>{% for h in history %}
       <tr><td class="nowrap">{{ h.at|date:"Y-m-d H:i" }}</td><td>{{ h.user.get_username|default:"-" }}</td>
         <td>{{ h.activity_type.name|default:"-" }}</td><td>{{ h.old_value|default:"없음" }} → {{ h.new_value|default:"없음" }}</td></tr>{% endfor %}
-    </tbody></table></div>
+    </tbody></table></div></div>
+  <div class="only-mobile"><ul class="card-list">{% for h in history %}
+    <li class="card-item"><div class="card-item-title">{{ h.activity_type.name|default:"-" }}: {{ h.old_value|default:"없음" }} → {{ h.new_value|default:"없음" }}</div>
+      <div class="card-item-meta">{{ h.at|date:"Y-m-d H:i" }} · {{ h.user.get_username|default:"-" }}</div></li>{% endfor %}</ul></div>
   {% else %}<p class="muted">아직 변경 이력이 없습니다.</p>{% endif %}
 </div>
 </div>

@@ -10,3 +10,8 @@
 .date-form { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
 .date-form input[type=date] { width: auto; max-width: 100%; }
 .inline-form { display: inline; }
+@media (max-width: 720px) {
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+  .stat-grid .card { padding: .6rem; }
+  .stat { font-size: 1.6rem; }
+}

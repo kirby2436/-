@@ -432,3 +432,22 @@ class QuickAddTests(Base):
         self.assertEqual(d2["id"], d["id"])
         self.assertEqual(Floor.objects.filter(name="3F").count(), 1)
         self.assertEqual(self.client.post(url, {"name": ""}).status_code, 400)
+
+
+class UiTextTests(Base):
+    def test_empty_options_are_korean(self):
+        p = self.make_project()
+        for url in (reverse("projects:create"), reverse("projects:sections", args=[p.pk]), reverse("projects:files", args=[p.pk])):
+            r = self.client.get(url)
+            self.assertNotContains(r, "Select an option")
+            self.assertNotContains(r, "---------")
+        self.assertContains(self.client.get(reverse("projects:create")), "선택하세요")
+        self.assertContains(self.client.get(reverse("projects:sections", args=[p.pk])), "선택 안 함")
+
+    def test_detail_has_mobile_cards_and_completed_next_to_confirmed(self):
+        p = self.make_project()
+        s = self.make_section(p)
+        r = self.client.get(reverse("projects:detail", args=[p.pk]))
+        self.assertContains(r, "card-actions")
+        r = self.client.get(reverse("projects:sections", args=[p.pk]))
+        self.assertContains(r, "field-pair")

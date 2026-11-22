@@ -44,6 +44,10 @@ class ProjectForm(forms.ModelForm):
         )
         self.fields["customer"].widget.attrs["data-quick"] = "customer"
         self.fields["contractor"].widget.attrs["data-quick"] = "contractor"
+        self.fields["project_type"].empty_label = "선택하세요"
+        self.fields["customer"].empty_label = "선택하세요"
+        self.fields["contractor"].empty_label = "선택 안 함"
+        self.fields["manager"].empty_label = "선택 안 함"
         self.fields["manager"].queryset = User.objects.filter(is_active=True)
         self.fields["manager"].label_from_instance = lambda u: u.get_full_name() or u.get_username()
 
@@ -102,6 +106,8 @@ class SectionForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         _dates(self)
         self.fields["floor"].widget.attrs["data-quick"] = "floor"
+        self.fields["floor"].empty_label = "선택 안 함"
+        self.fields["fabricator"].empty_label = "선택 안 함"
         inst = self.instance
         self.fields["fabricator"].queryset = Partner.objects.filter(is_fabricator=True, is_active=True) | Partner.objects.filter(
             pk=inst.fabricator_id or 0
@@ -168,7 +174,7 @@ class SectionFileForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         _dates(self)
         self.fields["section"].queryset = Section.objects.filter(project=project).select_related("floor")
-        self.fields["section"].empty_label = "(구간 지정 안 함)"
+        self.fields["section"].empty_label = "선택 안 함"
 
 
 class QuickPartnerForm(forms.Form):

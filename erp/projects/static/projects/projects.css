@@ -23,3 +23,9 @@
 .sr-status { min-height: 1.2em; }
 .card-title .btn { flex: 0 0 auto; }
 @media (max-width: 720px) { .kv-wide { grid-template-columns: 1fr; } .kv-wide dd { margin-bottom: .4rem; } }
+.field-pair { grid-column: span 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 .75rem; align-items: end; }
+.field-pair .field-help { grid-column: 1 / -1; margin: -.25rem 0 .5rem; }
+.field-pair .field-check { padding-bottom: .5rem; min-height: 38px; }
+.card-actions { display: flex; gap: .5rem; margin-top: .6rem; }
+.card-actions .btn { flex: 1 1 0; }
+@media (max-width: 400px) { .field-pair { grid-column: 1 / -1; } }

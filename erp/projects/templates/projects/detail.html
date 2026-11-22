@@ -24,28 +24,37 @@
 <section class="card">
   <div class="card-title"><h2>수주정보</h2><a class="btn btn-sm" href="{% url 'projects:order_items' pk=project.pk %}">수정</a></div>
   {% if order_items %}
-  <div class="table-wrap"><table class="table table-compact">
+  <div class="only-desktop"><div class="table-wrap"><table class="table table-compact">
     <thead><tr><th>순번</th><th>품명</th><th>단위</th><th class="num">수량</th><th class="num">단가</th><th class="num">금액</th><th>비고</th></tr></thead>
     <tbody>{% for i in order_items %}<tr><td>{{ i.seq }}</td><td>{{ i.item_name }}</td><td>{{ i.unit }}</td><td class="num">{{ i.quantity|floatformat:"-2g" }}</td><td class="num">{{ i.unit_price|floatformat:"0g" }}</td><td class="num">{{ i.amount|floatformat:"0g" }}</td><td>{{ i.note }}</td></tr>{% endfor %}</tbody>
     <tfoot><tr><th colspan="5" class="num">합계</th><th class="num">{{ project.order_amount|floatformat:"0g" }}</th><th></th></tr></tfoot>
-  </table></div>
+  </table></div></div>
+  <div class="only-mobile"><ul class="card-list">
+    {% for i in order_items %}<li class="card-item"><div class="card-item-title">{{ i.seq }}. {{ i.item_name }}</div>
+      <dl class="kv"><dt>단위</dt><dd>{{ i.unit|default:"-" }}</dd><dt>수량</dt><dd>{{ i.quantity|floatformat:"-2g" }}</dd><dt>단가</dt><dd>{{ i.unit_price|floatformat:"0g" }}</dd><dt>금액</dt><dd>{{ i.amount|floatformat:"0g" }}원</dd>{% if i.note %}<dt>비고</dt><dd>{{ i.note }}</dd>{% endif %}</dl></li>{% endfor %}
+    <li class="card-item"><strong>합계 {{ project.order_amount|floatformat:"0g" }}원</strong></li>
+  </ul></div>
   {% else %}<p class="muted">등록된 수주정보가 없습니다.</p>{% endif %}
 </section>
 
 <section class="card">
   <div class="card-title"><h2>품목 단가</h2><a class="btn btn-sm" href="{% url 'projects:prices' pk=project.pk %}">수정</a></div>
   {% if prices %}
-  <div class="table-wrap"><table class="table table-compact">
+  <div class="only-desktop"><div class="table-wrap"><table class="table table-compact">
     <thead><tr><th>규격</th><th>단위</th><th class="num">단가</th><th>적용 시작일</th><th>비고</th></tr></thead>
     <tbody>{% for p in prices %}<tr><td>{{ p.spec }}</td><td>{{ p.unit }}</td><td class="num">{{ p.unit_price|floatformat:"-2g" }}</td><td>{{ p.effective_from|date:"Y-m-d"|default:"-" }}</td><td>{{ p.note }}</td></tr>{% endfor %}</tbody>
-  </table></div>
+  </table></div></div>
+  <div class="only-mobile"><ul class="card-list">
+    {% for p in prices %}<li class="card-item"><div class="card-item-title">{{ p.spec }}</div>
+      <dl class="kv"><dt>단위</dt><dd>{{ p.unit|default:"-" }}</dd><dt>단가</dt><dd>{{ p.unit_price|floatformat:"-2g" }}</dd><dt>적용 시작일</dt><dd>{{ p.effective_from|date:"Y-m-d"|default:"-" }}</dd>{% if p.note %}<dt>비고</dt><dd>{{ p.note }}</dd>{% endif %}</dl></li>{% endfor %}
+  </ul></div>
   {% else %}<p class="muted">등록된 단가가 없습니다.</p>{% endif %}
 </section>
 
 <section class="card">
   <div class="card-title"><h2>구간</h2><a class="btn btn-sm" href="{% url 'projects:sections' pk=project.pk %}">수정</a></div>
   {% if sections %}
-  <div class="table-wrap"><table class="table table-compact">
+  <div class="only-desktop"><div class="table-wrap"><table class="table table-compact">
     <thead><tr><th>구간</th><th>층</th><th>출고예정</th><th>출고확정</th><th>제작</th><th>외주제작처</th><th>상태</th><th class="num">BOM</th><th>이동</th></tr></thead>
     <tbody>{% for s in sections %}<tr>
       <td>{{ s.name }}</td><td>{{ s.floor.name|default:"-" }}</td>
@@ -55,14 +64,21 @@
       <td class="num">{{ s.bom_count }}</td>
       <td class="nowrap"><a class="btn btn-sm" href="{% url 'bom:section' pk=s.pk %}">BOM</a> <a class="btn btn-sm" href="{% url 'schedule:section' pk=s.pk %}">일정</a></td>
     </tr>{% endfor %}</tbody>
-  </table></div>
+  </table></div></div>
+  <div class="only-mobile"><ul class="card-list">
+    {% for s in sections %}<li class="card-item">
+      <div class="card-item-title">{{ s.name }}{% if s.floor %} · {{ s.floor.name }}{% endif %} {% if s.is_completed %}<span class="badge badge-done">완료</span>{% else %}<span class="badge badge-planned">진행</span>{% endif %}</div>
+      <dl class="kv"><dt>출고예정</dt><dd>{{ s.planned_ship_date|date:"Y-m-d" }}</dd><dt>출고확정</dt><dd>{{ s.confirmed_ship_date|date:"Y-m-d"|default:"-" }}</dd><dt>제작</dt><dd>{{ s.get_make_type_display }}</dd><dt>외주제작처</dt><dd>{{ s.fabricator.name|default:"-" }}</dd><dt>BOM</dt><dd>{{ s.bom_count }}건</dd></dl>
+      <div class="card-actions"><a class="btn btn-sm" href="{% url 'bom:section' pk=s.pk %}">BOM</a> <a class="btn btn-sm" href="{% url 'schedule:section' pk=s.pk %}">일정</a></div>
+    </li>{% endfor %}
+  </ul></div>
   {% else %}<p class="muted">등록된 구간이 없습니다.</p>{% endif %}
 </section>
 
 <section class="card">
   <div class="card-title"><h2>도면·BOM 파일</h2><a class="btn btn-sm" href="{% url 'projects:files' pk=project.pk %}">파일 관리</a></div>
   {% if files %}
-  <div class="table-wrap"><table class="table table-compact">
+  <div class="only-desktop"><div class="table-wrap"><table class="table table-compact">
     <thead><tr><th>순번</th><th>구간</th><th>배포일자</th><th>설계변경일</th><th>변경내용</th><th>파일</th></tr></thead>
     <tbody>{% for f in files %}<tr><td>{{ f.seq }}</td><td>{{ f.section.name|default:"-" }}</td><td class="nowrap">{{ f.distributed_on|date:"Y-m-d" }}</td><td class="nowrap">{{ f.design_changed_on|date:"Y-m-d"|default:"-" }}</td><td>{{ f.change_note }}</td><td><a href="{{ f.file.url }}">{{ f.file.name|cut:"section_files/" }}</a></td></tr>{% endfor %}</tbody>
   </table></div>

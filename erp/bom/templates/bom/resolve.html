@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}누락 품목 정리{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>누락 품목 정리</h1><p class="muted small">{{ section.project.code }} {{ section.project.name }} / {{ section.name }}</p></div>
+  <div class="actions"><a class="btn" href="{% url 'bom:section' section.pk %}">BOM으로 돌아가기</a></div>
+</div>
+{% if not forms %}
+<div class="card"><p>품목 미등록이거나 구성이 없는 Profile이 없습니다.</p></div>
+{% else %}
+{% for kind, label in kinds %}
+<datalist id="parts-{{ kind }}">
+  {% if kind == "BOTTOM" %}{% for n in formed_parts.BOTTOM %}<option value="{{ n }}">{% endfor %}{% else %}{% for n in formed_parts.SIDE %}<option value="{{ n }}">{% endfor %}{% endif %}
+</datalist>
+{% endfor %}
+<form method="post">
+  {% csrf_token %}
+  <p class="muted small">규격은 목록에서 고르거나 새 이름을 직접 입력하면 저장할 때 추가됩니다. 비워 둔 칸은 건너뜁니다. 입력하지 않은 Profile은 저장하지 않습니다.</p>
+  <div class="bom-resolve-grid">
+  {% for f in forms %}
+    {% with fi=forloop.counter0 %}
+    <fieldset class="card">
+      <legend><strong>{{ f.profile }}</strong> <span class="badge badge-warn">{% if f.has_product %}구성 없음{% else %}품목 미등록{% endif %} · {{ f.count }}건</span></legend>
+      <input type="hidden" name="profile" value="{{ f.profile }}">
+      {% if f.errors %}<ul class="bom-errors">{% for e in f.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      <div class="field-row">
+        <div class="field"><label for="f{{ fi }}-bt">하판 두께</label><input type="text" inputmode="decimal" id="f{{ fi }}-bt" name="f{{ fi }}-bottom_thickness" value="{{ f.bottom_thickness }}"></div>
+        <div class="field"><label for="f{{ fi }}-st">측판 두께</label><input type="text" inputmode="decimal" id="f{{ fi }}-st" name="f{{ fi }}-side_thickness" value="{{ f.side_thickness }}"></div>
+      </div>
+      {% for g in f.groups %}
+      <h3>{{ g.label }}</h3>
+      {% for s in g.slots %}
+      <div class="bom-slot">
+        <p class="bom-slot-label">{{ g.label }} {{ s.slot }}</p>
+        <input type="text" list="parts-{{ g.kind }}" name="f{{ fi }}-{{ g.kind }}{{ s.slot }}-name" value="{{ s.name }}" maxlength="50" placeholder="규격" aria-label="{{ g.label }} {{ s.slot }} 규격">
+        <input type="number" min="1" max="1000" name="f{{ fi }}-{{ g.kind }}{{ s.slot }}-qty" value="{{ s.qty }}" aria-label="{{ g.label }} {{ s.slot }} 수량">
+        <label class="bom-ns"><input type="checkbox" name="f{{ fi }}-{{ g.kind }}{{ s.slot }}-ns" {% if s.ns %}checked{% endif %}> 비규격</label>
+      </div>
+      {% endfor %}
+      {% endfor %}
+    </fieldset>
+    {% endwith %}
+  {% endfor %}
+  </div>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">저장</button></div>
+</form>
+{% endif %}
+{% endblock %}

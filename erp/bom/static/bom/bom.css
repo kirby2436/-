@@ -1,0 +1,20 @@
+.bom-toolbar { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.bom-note-form { display: flex; gap: .25rem; align-items: center; min-width: 180px; }
+.bom-note-form input { min-width: 0; flex: 1 1 auto; padding: .2rem .4rem; }
+.bom-totals td { font-weight: 700; background: #eef1f6; }
+.bom-row-error td { background: var(--danger-soft); }
+.bom-row-warn td { background: var(--warn-soft); }
+.bom-errors { margin: 0; padding-left: 1.1rem; color: var(--danger); font-weight: 600; font-size: .85rem; }
+.bom-paste { width: 100%; min-height: 9rem; font-family: ui-monospace, Consolas, monospace; font-size: .85rem; }
+.bom-mode { display: grid; gap: .5rem; margin: .75rem 0; }
+.bom-mode label { display: flex; gap: .5rem; align-items: flex-start; font-weight: 600; }
+.bom-mode input { width: auto; margin-top: .25rem; }
+.bom-resolve-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 1rem; }
+.bom-slot { display: grid; grid-template-columns: 1fr 5.5rem; gap: .35rem; align-items: center; margin-bottom: .5rem; }
+.bom-slot .bom-ns { grid-column: 1 / -1; font-size: .85rem; display: flex; gap: .4rem; align-items: center; }
+.bom-slot .bom-ns input { width: auto; }
+.bom-slot-label { font-size: .8rem; color: var(--muted); grid-column: 1 / -1; margin: 0; }
+.bom-summary { font-size: .9rem; }
+@media (max-width: 720px) {
+  .bom-note-form { min-width: 150px; }
+}

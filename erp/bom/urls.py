@@ -7,4 +7,8 @@ app_name = "bom"
 urlpatterns = [
     path("", views.index, name="index"),
     path("sections/<int:pk>/", views.section_bom, name="section"),
+    path("sections/<int:pk>/upload/", views.upload, name="upload"),
+    path("sections/<int:pk>/resolve/", views.resolve, name="resolve"),
+    path("items/<int:pk>/delete/", views.item_delete, name="item_delete"),
+    path("items/<int:pk>/note/", views.item_note, name="item_note"),
 ]

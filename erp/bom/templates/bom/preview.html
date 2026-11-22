@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}BOM 미리보기{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>BOM 미리보기</h1><p class="muted small">{{ section.project.code }} {{ section.project.name }} / {{ section.name }}{% if filename %} / {{ filename }}{% endif %}</p></div>
+  <div class="actions"><a class="btn" href="{% url 'bom:upload' section.pk %}">다시 올리기</a></div>
+</div>
+{% if error %}<p class="message message-error">{{ error }}</p>{% endif %}
+<div class="card">
+  <p>총 {{ total_rows }}행 /
+    {% if error_rows %}<span class="badge badge-late">오류 {{ error_rows }}행</span>{% else %}<span class="badge badge-done">오류 없음</span>{% endif %}
+    {% if warn_rows %}<span class="badge badge-warn">경고(Ass Mark 중복) {{ warn_rows }}행</span>{% endif %}</p>
+  {% if error_rows %}<p class="message message-error">오류가 있는 행이 {{ error_rows }}행 있어 저장할 수 없습니다. 파일을 고쳐 다시 올려 주세요.</p>{% endif %}
+  {% if truncated %}<p class="muted small">오류·경고 행만 최대 500행까지 표시합니다.</p>{% endif %}
+  <div class="table-wrap">
+    <table class="table table-compact">
+      <thead><tr><th class="num">행</th><th>Ass Mark</th><th>Profile</th><th class="num">Length(mm)</th><th class="num">수량</th><th>FINISH</th><th>LOCATION</th><th>검사 결과</th></tr></thead>
+      <tbody>
+      {% for r in rows %}
+        <tr class="{% if r.errors %}bom-row-error{% elif r.dup_file or r.dup_existing %}bom-row-warn{% endif %}">
+          <td class="num">{{ r.row_no }}</td><td>{{ r.ass_mark }}</td><td>{{ r.profile }}</td><td class="num">{{ r.length }}</td><td class="num">{{ r.qty }}</td><td>{{ r.finish }}</td><td>{{ r.location }}</td>
+          <td>
+            {% if r.errors %}<ul class="bom-errors">{% for e in r.errors %}<li>오류: {{ e }}</li>{% endfor %}</ul>{% endif %}
+            {% if r.dup_file %}<span class="badge badge-warn">경고: 파일 내 중복</span>{% endif %}
+            {% if r.dup_existing %}<span class="badge badge-warn">경고: 기존 BOM과 중복</span>{% endif %}
+            {% if not r.errors and not r.dup_file and not r.dup_existing %}<span class="muted">정상</span>{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if not error_rows %}
+<form method="post" class="card" style="margin-top:1rem">
+  {% csrf_token %}
+  <input type="hidden" name="step" value="confirm">
+  <input type="hidden" name="payload" value="{{ token }}">
+  <h2>등록 방식</h2>
+  <div class="bom-mode">
+    <label><input type="radio" name="mode" value="append" {% if mode != "replace" %}checked{% endif %}> 추가 등록 (기존 BOM {{ existing_count }}건 유지)</label>
+    <label><input type="radio" name="mode" value="replace" {% if mode == "replace" %}checked{% endif %}> 새로 등록 (기존 BOM 모두 삭제 후 등록)</label>
+  </div>
+  <div id="replace-confirm" {% if mode != "replace" %}hidden{% endif %}>
+    {% if existing_count %}
+    <p class="message message-warning">기존 BOM {{ existing_count }}건이 모두 삭제됩니다.</p>
+    <label><input type="checkbox" name="confirm_replace"> 기존 {{ existing_count }}건을 삭제하고 새로 등록하는 데 동의합니다.</label>
+    {% else %}<p class="muted small">기존 BOM이 없습니다.</p>{% endif %}
+  </div>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">{{ total_rows }}건 저장</button></div>
+</form>
+{% endif %}
+{% endblock %}
+{% block extra_js %}<script src="{% static 'bom/bom.js' %}"></script>{% endblock %}

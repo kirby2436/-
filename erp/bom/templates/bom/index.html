@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}구간 BOM{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header"><h1>구간 BOM</h1></div>
+<form method="get" class="filter-bar" role="search">
+  <div class="field"><label for="q">검색</label><input type="search" id="q" name="q" value="{{ q }}" placeholder="프로젝트 코드·이름, 구간 이름"></div>
+  <div class="filter-actions"><button type="submit" class="btn btn-primary">검색</button>{% if q %}<a class="btn" href="{% url 'bom:index' %}">초기화</a>{% endif %}</div>
+</form>
+<div class="card">
+  {% if page.object_list %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>프로젝트</th><th>구간</th><th>층</th><th class="num">BOM 건수</th><th class="num">품목 미등록</th><th></th></tr></thead>
+      <tbody>
+      {% for s in page %}
+        <tr>
+          <td>{{ s.project.code }} {{ s.project.name }}</td>
+          <td>{{ s.name }}</td>
+          <td>{{ s.floor|default:"-" }}</td>
+          <td class="num">{{ s.bom_count }}</td>
+          <td class="num">{% if s.unresolved_count %}<span class="badge badge-warn">미등록 {{ s.unresolved_count }}건</span>{% else %}<span class="muted">0</span>{% endif %}</td>
+          <td class="nowrap"><a class="btn btn-sm" href="{% url 'bom:section' s.pk %}">BOM 보기</a></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">조건에 맞는 구간이 없습니다.</p>
+  {% endif %}
+</div>
+{% if page.has_other_pages %}
+<nav class="pagination" aria-label="페이지">
+  {% if page.has_previous %}<a href="?q={{ q|urlencode }}&page={{ page.previous_page_number }}">이전</a>{% else %}<span class="disabled">이전</span>{% endif %}
+  <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?q={{ q|urlencode }}&page={{ page.next_page_number }}">다음</a>{% else %}<span class="disabled">다음</span>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

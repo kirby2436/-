@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}BOM 업로드{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>BOM 업로드</h1><p class="muted small">{{ section.project.code }} {{ section.project.name }} / {{ section.name }} (현재 {{ existing_count }}건)</p></div>
+  <div class="actions"><a class="btn" href="{% url 'bom:section' section.pk %}">돌아가기</a></div>
+</div>
+<form method="post" enctype="multipart/form-data" class="card stack">
+  {% csrf_token %}
+  <input type="hidden" name="step" value="preview">
+  {% if error %}<div class="field has-error"><p class="field-error">{{ error }}</p></div>{% endif %}
+  <div class="field">
+    <label for="file">엑셀 파일 (.xlsx)</label>
+    <input type="file" id="file" name="file" accept=".xlsx">
+    <p class="field-help">머리글: Ass Mark, Profile, Length(mm), Q'ty (필수), FINISH, LOCATION (선택). 머리글은 처음 30행 안에 있으면 됩니다.</p>
+  </div>
+  <div class="field">
+    <label for="text">또는 엑셀에서 복사한 표 붙여넣기</label>
+    <textarea id="text" name="text" class="bom-paste" placeholder="Ass Mark&#9;Profile&#9;Length(mm)&#9;Q'ty&#9;FINISH&#9;LOCATION">{{ text }}</textarea>
+    <p class="field-help">파일과 붙여넣기를 모두 입력하면 파일을 사용합니다. 최대 5,000행.</p>
+  </div>
+  <div class="form-actions"><button type="submit" class="btn btn-primary">미리보기</button></div>
+</form>
+{% endblock %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}파일 삭제{% endblock %}
+{% block extra_head %}{% include "projects/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header"><h1>파일 삭제 확인</h1></div>
+<form method="post" class="card">
+  {% csrf_token %}
+  <p>다음 파일을 삭제하시겠습니까? 삭제하면 되돌릴 수 없습니다.</p>
+  <dl class="kv"><dt>순번</dt><dd>{{ file.seq }}</dd><dt>파일</dt><dd>{{ file.file.name|cut:"section_files/" }}</dd><dt>배포일자</dt><dd>{{ file.distributed_on|date:"Y-m-d" }}</dd></dl>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-danger">삭제</button>
+    <a class="btn" href="{% url 'projects:files' pk=project.pk %}">취소</a>
+  </div>
+</form>
+{% endblock %}

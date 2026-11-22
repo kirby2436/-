@@ -236,7 +236,7 @@ class AuthTests(TestCase):
         self.assertTrue(self.client.login(username="u1", password="pw12345!"))
         for name in ["schedule:home", "projects:list", "bom:index", "schedule:board"]:
             self.assertEqual(self.client.get(reverse(name)).status_code, 200, name)
-        self.assertEqual(self.client.get(reverse("schedule:section", args=[1])).status_code, 200)
+        self.assertEqual(self.client.get(reverse("schedule:section", args=[999999])).status_code, 404)
         r = self.client.get(reverse("schedule:home"))
         self.assertContains(r, reverse("projects:list"))
         self.assertNotContains(r, "/admin/")

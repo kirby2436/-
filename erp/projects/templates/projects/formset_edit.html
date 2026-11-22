@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block extra_head %}{% include "projects/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{{ title }}</h1><p class="muted small">{{ project.code }} {{ project.name }}</p></div>
+</div>
+<form method="post" novalidate id="formset-form">
+  {% csrf_token %}
+  {{ formset.management_form }}
+  {% if kind == 'section' %}
+  <div class="card toolbar">
+    <span class="small muted">층·외주제작처가 목록에 없으면 바로 추가할 수 있습니다.</span>
+    <button type="button" class="btn btn-sm" data-quick-open="floor">층 새로 추가</button>
+    <button type="button" class="btn btn-sm" data-quick-open="fabricator">외주제작처 새로 추가</button>
+  </div>
+  {% endif %}
+  {% if kind == 'order' %}<p class="muted small">단가는 금액 ÷ 수량으로 자동 계산됩니다.</p>{% endif %}
+  {% for e in formset.non_form_errors %}<div class="message message-error">{{ e }}</div>{% endfor %}
+  <div id="rows">
+    {% for form in formset %}{% include "projects/_row.html" %}{% endfor %}
+  </div>
+  <template id="empty-row">{% with form=formset.empty_form %}{% include "projects/_row.html" %}{% endwith %}</template>
+  <p><button type="button" class="btn" data-add-row data-template="empty-row" data-container="rows" data-prefix="{{ formset.prefix }}">+ 행 추가</button></p>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">저장</button>
+    <a class="btn" href="{% url 'projects:detail' pk=project.pk %}">취소</a>
+  </div>
+</form>
+{% if kind == 'section' %}{% include "projects/_quick_dialog.html" %}{% endif %}
+{% endblock %}
+{% block extra_js %}{% load static %}<script src="{% static 'projects/projects.js' %}"></script>{% endblock %}

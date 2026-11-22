@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}도면·BOM 파일{% endblock %}
+{% block extra_head %}{% include "projects/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>도면·BOM 파일</h1><p class="muted small">{{ project.code }} {{ project.name }}</p></div>
+  <div class="actions"><a class="btn" href="{% url 'projects:detail' pk=project.pk %}">프로젝트로 돌아가기</a></div>
+</div>
+<form method="post" enctype="multipart/form-data" class="card" novalidate>
+  {% csrf_token %}
+  <h2>파일 등록</h2>
+  <p class="field-help">순번은 자동으로 부여됩니다.</p>
+  {% for e in form.non_field_errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+  <div class="form-grid">
+    {% include "projects/_field.html" with field=form.section %}
+    {% include "projects/_field.html" with field=form.distributed_on %}
+    {% include "projects/_field.html" with field=form.design_changed_on %}
+    {% include "projects/_field.html" with field=form.change_note %}
+  </div>
+  <div class="field{% if form.file.errors %} has-error{% endif %}" data-dropzone>
+    <label for="{{ form.file.id_for_label }}">파일 <span class="req" aria-hidden="true">*</span></label>
+    <div class="dropzone"><p class="small muted">여기로 파일을 끌어다 놓거나 아래에서 선택하세요.</p>{{ form.file }}<p class="small" data-drop-name></p></div>
+    {% for e in form.file.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+  </div>
+  {% include "projects/_field.html" with field=form.note %}
+  <div class="form-actions"><button type="submit" class="btn btn-primary">등록</button></div>
+</form>
+<section class="card">
+  <h2>등록된 파일</h2>
+  {% if files %}
+  <div class="table-wrap"><table class="table table-compact">
+    <thead><tr><th>순번</th><th>구간</th><th>배포일자</th><th>설계변경일</th><th>변경내용</th><th>파일</th><th>비고</th><th></th></tr></thead>
+    <tbody>{% for f in files %}<tr><td>{{ f.seq }}</td><td>{{ f.section.name|default:"-" }}</td><td class="nowrap">{{ f.distributed_on|date:"Y-m-d" }}</td><td class="nowrap">{{ f.design_changed_on|date:"Y-m-d"|default:"-" }}</td><td>{{ f.change_note }}</td><td><a href="{{ f.file.url }}">{{ f.file.name|cut:"section_files/" }}</a></td><td>{{ f.note }}</td><td><a class="btn btn-sm btn-danger" href="{% url 'projects:file_delete' pk=project.pk file_pk=f.pk %}">삭제</a></td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">등록된 파일이 없습니다.</p>{% endif %}
+</section>
+{% endblock %}
+{% block extra_js %}{% load static %}<script src="{% static 'projects/projects.js' %}"></script>{% endblock %}

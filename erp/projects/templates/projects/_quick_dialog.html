@@ -1,0 +1,18 @@
+<dialog class="modal" id="quick-dialog" data-partner-url="{% url 'projects:quick_partner' %}" data-floor-url="{% url 'projects:quick_floor' %}">
+  <form method="dialog" id="quick-form" novalidate>
+    {% csrf_token %}
+    <div class="modal-body">
+      <h2 id="quick-title">새로 추가</h2>
+      <div class="field">
+        <label for="quick-name" id="quick-label">이름</label>
+        <input type="text" id="quick-name" name="name" maxlength="100" autocomplete="off">
+        <p class="field-error" id="quick-error" role="alert" hidden></p>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="quick-cancel">취소</button>
+      <button type="submit" class="btn btn-primary" id="quick-save">추가</button>
+    </div>
+  </form>
+</dialog>
+<div class="sr-status small muted" id="quick-status" role="status" aria-live="polite"></div>

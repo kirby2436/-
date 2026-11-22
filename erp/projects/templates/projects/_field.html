@@ -1,0 +1,6 @@
+<div class="field{% if field.errors %} has-error{% endif %}{% if field.field.widget.input_type == 'checkbox' %} field-check{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+  {% if quick %}<div class="input-with-btn">{{ field }}<button type="button" class="btn btn-sm" data-quick-open="{{ quick }}" data-target="{{ field.id_for_label }}">새로 추가</button></div>{% else %}{{ field }}{% endif %}
+  {% for e in field.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+  {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+</div>

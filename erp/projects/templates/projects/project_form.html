@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{% if project %}기본정보 수정{% else %}프로젝트 등록{% endif %}{% endblock %}
+{% block extra_head %}{% include "projects/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>{% if project %}기본정보 수정{% else %}프로젝트 등록{% endif %}</h1>
+  {% if project %}<p class="muted small">{{ project.code }}</p>{% else %}<p class="muted small">프로젝트 코드는 저장할 때 자동으로 부여됩니다.</p>{% endif %}</div>
+</div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% for e in form.non_field_errors %}<div class="message message-error">{{ e }}</div>{% endfor %}
+  <div class="card">
+    <h2>기본정보</h2>
+    <div class="form-grid">
+      {% include "projects/_field.html" with field=form.name %}
+      {% include "projects/_field.html" with field=form.project_type %}
+      {% include "projects/_field.html" with field=form.status %}
+      {% include "projects/_field.html" with field=form.manager %}
+      {% include "projects/_field.html" with field=form.contract_date %}
+      {% include "projects/_field.html" with field=form.start_date %}
+      {% include "projects/_field.html" with field=form.end_date %}
+    </div>
+  </div>
+  <div class="card">
+    <h2>거래처</h2>
+    <div class="form-grid">
+      {% include "projects/_field.html" with field=form.customer quick="customer" %}
+      {% include "projects/_field.html" with field=form.customer_contact %}
+      {% include "projects/_field.html" with field=form.contractor quick="contractor" %}
+      {% include "projects/_field.html" with field=form.contractor_contact %}
+    </div>
+  </div>
+  <div class="card">
+    {% include "projects/_field.html" with field=form.note %}
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">저장</button>
+    <a class="btn" href="{% if project %}{% url 'projects:detail' pk=project.pk %}{% else %}{% url 'projects:list' %}{% endif %}">취소</a>
+  </div>
+</form>
+{% include "projects/_quick_dialog.html" %}
+{% endblock %}
+{% block extra_js %}{% load static %}<script src="{% static 'projects/projects.js' %}"></script>{% endblock %}

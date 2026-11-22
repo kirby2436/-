@@ -1,0 +1,17 @@
+<div class="row-card" data-row>
+  <div class="row-head">
+    {% if form.instance.pk %}
+      <span class="muted small">기존 행</span>
+      {% if form.instance.bom_count %}<span class="badge badge-warn">BOM {{ form.instance.bom_count }}건 - 삭제 불가</span>
+      {% else %}<label class="del-check"><input type="checkbox" name="{{ form.prefix }}-DELETE" id="id_{{ form.prefix }}-DELETE"{% if form.DELETE.value %} checked{% endif %}> 삭제</label>{% endif %}
+    {% else %}
+      <span class="muted small">새 행</span>
+      <button type="button" class="btn btn-sm" data-remove-row>행 취소</button>
+    {% endif %}
+  </div>
+  {% for e in form.non_field_errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+  <div class="row-fields">
+    {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+    {% for field in form.visible_fields %}{% if field.name != 'DELETE' %}{% include "projects/_field.html" %}{% endif %}{% endfor %}
+  </div>
+</div>

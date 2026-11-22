@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}홈{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'schedule/schedule.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header"><h1>홈</h1>
+  <div class="actions"><a class="btn" href="{% url 'schedule:board' %}">진행현황판</a></div></div>
+<div class="stack">
+  <div class="stat-grid">
+    <div class="card"><div class="muted small">진행 중 프로젝트</div><div class="stat" id="stat-active">{{ active_count }}</div></div>
+    <div class="card"><div class="muted small">수주 프로젝트</div><div class="stat" id="stat-ordered">{{ ordered_count }}</div></div>
+    <div class="card"><div class="muted small">이번 주 출고 예정 구간</div><div class="stat">{{ ship_sections|length }}</div></div>
+    <div class="card"><div class="muted small">지연 Activity</div><div class="stat">{{ late_total }}</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><h2>이번 주 출고 예정 ({{ monday|date:"n/j" }} ~ {{ sunday|date:"n/j" }})</h2></div>
+    {% if ship_sections %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>출고일</th><th>프로젝트</th><th>구간</th><th>층</th><th></th></tr></thead>
+      <tbody>{% for s in ship_sections %}
+        <tr><td class="nowrap">{{ s.ship_date|date:"n/j (D)" }}{% if s.ship_confirmed %} <span class="badge badge-done">확정</span>{% else %} <span class="badge badge-planned">예정</span>{% endif %}</td>
+          <td><a href="{% url 'projects:detail' s.project.pk %}">{{ s.project.code }} {{ s.project.name }}</a></td>
+          <td>{{ s.name }}</td><td>{{ s.floor|default_if_none:"-" }}</td>
+          <td><a href="{% url 'schedule:section' s.pk %}">일정 보기</a></td></tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}
+    <p class="muted">이번 주에 출고 예정인 구간이 없습니다. 프로젝트에 구간을 등록하면 이곳에 표시됩니다. <a href="{% url 'projects:list' %}">프로젝트 목록으로 이동</a></p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title"><h2>지연된 Activity</h2>
+      {% if late %}<a class="small" href="{% url 'schedule:board' %}?late_only=on">진행현황판에서 지연만 보기{% if late_total > late|length %} (전체 {{ late_total }}건){% endif %}</a>{% endif %}</div>
+    {% if late %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>구간</th><th>단계</th><th>계획일</th><th class="num">지연 일수</th></tr></thead>
+      <tbody>{% for r in late %}
+        <tr><td><a href="{% url 'schedule:section' r.section.pk %}">{{ r.section }}</a></td>
+          <td>{{ r.sa.activity_type.name }}</td>
+          <td class="nowrap">{{ r.sa.planned_date|date:"Y-m-d" }}</td>
+          <td class="num nowrap"><span class="badge badge-late">! {{ r.days_late }}일 지연</span></td></tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}
+    <p class="muted">지연된 Activity가 없습니다. 프로젝트와 구간을 등록하면 일정이 자동으로 만들어집니다. <a href="{% url 'projects:list' %}">프로젝트 등록하러 가기</a></p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-title"><h2>최근 변경 기록</h2></div>
+    {% if recent_logs %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>일시</th><th>사용자</th><th>작업</th><th>대상</th></tr></thead>
+      <tbody>{% for l in recent_logs %}
+        <tr><td class="nowrap">{{ l.at|date:"Y-m-d H:i" }}</td><td>{{ l.user.get_username|default:"-" }}</td>
+          <td>{{ l.get_action_display }}</td><td>{{ l.object_repr }}</td></tr>{% endfor %}
+      </tbody></table></div>
+    {% else %}
+    <p class="muted">아직 변경 기록이 없습니다. <a href="{% url 'projects:list' %}">프로젝트를 등록</a>해 보세요.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

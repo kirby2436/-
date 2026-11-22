@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}진행현황{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'schedule/schedule.css' %}">{% endblock %}
+{% block content %}
+<div class="page-header"><h1>진행현황</h1></div>
+<form method="get" class="filter-bar" aria-label="진행현황 필터">
+  <div class="field{% if form.start.errors %} has-error{% endif %}">{{ form.start.label_tag }}<input type="date" name="start" id="id_start" value="{{ form.start.value|default_if_none:default_start|date:'Y-m-d' }}">{% for e in form.start.errors %}<div class="field-error">{{ e }}</div>{% endfor %}</div>
+  <div class="field{% if form.end.errors %} has-error{% endif %}">{{ form.end.label_tag }}<input type="date" name="end" id="id_end" value="{{ form.end.value|default_if_none:default_end|date:'Y-m-d' }}">{% for e in form.end.errors %}<div class="field-error">{{ e }}</div>{% endfor %}</div>
+  <div class="field{% if form.project.errors %} has-error{% endif %}">{{ form.project.label_tag }}{{ form.project }}{% for e in form.project.errors %}<div class="field-error">{{ e }}</div>{% endfor %}</div>
+  <div class="field">{{ form.status.label_tag }}{{ form.status }}</div>
+  <div class="field">{{ form.manager.label_tag }}{{ form.manager }}</div>
+  <div class="field"><label for="id_late_only">{{ form.late_only }} 지연만</label></div>
+  <div class="filter-actions"><button class="btn btn-primary" type="submit">조회</button> <a class="btn" href="{% url 'schedule:board' %}">초기화</a></div>
+</form>
+{% if filter_invalid %}<p class="field-error">입력값에 오류가 있어 기본 조건으로 조회했습니다.</p>{% endif %}
+
+<div class="legend" aria-label="범례"><strong class="small">범례</strong>
+  {% for state in legend %}{% include "schedule/_state.html" %}{% endfor %}
+  <span class="muted small">숫자는 계획일(월/일), 실적일은 &quot;실적&quot;으로 표시됩니다.</span></div>
+<p class="muted" id="result-count">조회 결과 {{ paginator.count }}개 구간</p>
+
+{% if sections %}
+<div class="only-desktop"><div class="table-wrap">
+<table class="table board-table table-compact">
+  <thead><tr><th class="rowhead">프로젝트 / 구간</th><th>출고예정 / 확정</th>
+    {% for t in types %}<th title="{{ t.name }}">{{ t.mark|default:t.code }}<br><span class="small muted">{{ t.name }}</span></th>{% endfor %}</tr></thead>
+  <tbody>{% for s in sections %}
+    <tr>
+      <td class="rowhead"><a href="{% url 'projects:detail' s.project.pk %}">{{ s.project.code }} {{ s.project.name }}</a><br>
+        <a href="{% url 'schedule:section' s.pk %}">{{ s.name }}</a>{% if s.floor %} <span class="muted">{{ s.floor }}</span>{% endif %}{% if s.is_completed %} <span class="badge badge-done">구간 완료</span>{% endif %}</td>
+      <td class="nowrap small">예정 {{ s.planned_ship_date|date:"n/j" }}<br>확정 {% if s.confirmed_ship_date %}{{ s.confirmed_ship_date|date:"n/j" }}{% else %}-{% endif %}</td>
+      {% for c in s.cells %}{% if c.sa %}<td class="cell state-{{ c.state.code }}">
+        <span class="cell-state">{{ c.state.symbol }} {{ c.state.label }}</span>
+        계획 {{ c.sa.planned_date|date:"n/j" }}{% if c.sa.actual_date %}<br>실적 {{ c.sa.actual_date|date:"n/j" }}{% endif %}</td>
+      {% else %}<td class="cell">-</td>{% endif %}{% endfor %}
+    </tr>{% endfor %}
+  </tbody></table></div></div>
+
+<div class="only-mobile"><ul class="card-list">
+  {% for s in sections %}<li class="card-item">
+    <div class="card-item-title"><a href="{% url 'schedule:section' s.pk %}">{{ s.name }}{% if s.floor %} {{ s.floor }}{% endif %}</a></div>
+    <div class="card-item-meta"><a href="{% url 'projects:detail' s.project.pk %}">{{ s.project.code }} {{ s.project.name }}</a><br>
+      출고예정 {{ s.planned_ship_date|date:"n/j" }} / 확정 {% if s.confirmed_ship_date %}{{ s.confirmed_ship_date|date:"n/j" }}{% else %}-{% endif %}</div>
+    {% for c in s.cells %}{% if c.sa %}<div class="activity-line state-{{ c.state.code }}">
+      <span><strong>{{ c.type.mark|default:c.type.code }}</strong> {{ c.type.name }}</span>
+      <span class="text-right">{{ c.state.symbol }} {{ c.state.label }}<br>계획 {{ c.sa.planned_date|date:"n/j" }}{% if c.sa.actual_date %} / 실적 {{ c.sa.actual_date|date:"n/j" }}{% endif %}</span></div>{% endif %}{% endfor %}
+  </li>{% endfor %}
+</ul></div>
+
+{% if page.has_other_pages %}
+<nav class="pagination" aria-label="페이지">
+  {% if page.has_previous %}<a href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page.previous_page_number }}">이전</a>{% else %}<span class="disabled">이전</span>{% endif %}
+  <span class="current">{{ page.number }} / {{ paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page.next_page_number }}">다음</a>{% else %}<span class="disabled">다음</span>{% endif %}
+</nav>{% endif %}
+{% else %}
+<div class="card"><p class="muted">조건에 맞는 구간이 없습니다. 점검 기간이나 프로젝트 상태를 바꿔 보거나, <a href="{% url 'projects:list' %}">프로젝트 목록</a>에서 구간을 등록하세요.</p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,12 @@
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 1rem; }
+.stat { font-size: 2rem; font-weight: 700; line-height: 1.2; }
+.legend { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin: 0 0 .75rem; }
+.board-table th, .board-table td { vertical-align: top; }
+.board-table .cell { min-width: 5.5rem; font-size: .85rem; }
+.board-table .cell .mark { font-weight: 700; }
+.board-table .cell-state { font-weight: 600; display: block; }
+.board-table .rowhead { min-width: 12rem; }
+.activity-line { display: flex; justify-content: space-between; gap: .5rem; padding: .35rem .4rem; border-radius: 4px; margin-bottom: .25rem; font-size: .9rem; }
+.date-form { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.date-form input[type=date] { width: auto; max-width: 100%; }
+.inline-form { display: inline; }

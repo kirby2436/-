@@ -1,0 +1,1 @@
+<span class="badge {% if s.status == 'SHIPPED' %}badge-done{% elif s.status == 'CANCELED' %}badge-late{% else %}badge-soon{% endif %}">{{ s.get_status_display }}</span>

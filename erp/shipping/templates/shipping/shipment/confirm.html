@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}출하 확정{% endblock %}
+{% block extra_head %}{% include "shipping/master/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>출하 확정</h1><p class="muted small title-line">{{ shipment.title }}</p></div>
+</div>
+<div class="message message-info">확정하면 차량마다 공급번호가 부여되고 부재 면적이 기록됩니다. 확정 뒤에는 상차 내용을 바꿀 수 없고, 취소만 할 수 있습니다.</div>
+{% if problems %}
+<div class="card">
+  <h2>확정할 수 없는 사유</h2>
+  <ul>{% for p in problems %}<li class="field-error">{{ p }}</li>{% endfor %}</ul>
+  <p class="muted small">상차 편성 화면에서 고친 뒤 다시 확정하세요.</p>
+</div>
+{% endif %}
+<section class="card">
+  <h2>요약</h2>
+  <p><strong>차량 {{ shipment.truck_count }}대 · 부재 {{ shipment.piece_count }}개 · 면적 {{ shipment.total_area|floatformat:"2g" }}㎡</strong></p>
+  <p class="muted small">구간: {{ shipment.section_label|default:"-" }}</p>
+</section>
+{% for truck in trucks %}
+<section class="card">
+  <h2>{{ truck.seq }}호차</h2>
+  {% include "shipping/shipment/_lines_readonly.html" %}
+</section>
+{% endfor %}
+<form method="post" class="form-actions">
+  {% csrf_token %}
+  {% if problems %}
+    <button type="submit" class="btn btn-primary" disabled>출하 확정</button>
+    <a class="btn btn-primary" href="{% url 'shipping:load' pk=shipment.pk %}">상차 편성으로</a>
+  {% else %}
+    <button type="submit" class="btn btn-primary">출하 확정</button>
+  {% endif %}
+  <a class="btn" href="{% url 'shipping:detail' pk=shipment.pk %}">돌아가기</a>
+</form>
+{% endblock %}

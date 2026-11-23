@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}부재별 내역{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'shipping/report.css' %}?v=2">{% endblock %}
+{% block content %}
+<div class="page-header"><div class="page-title"><h1>부재별 내역</h1><p class="page-sub">출고 실적을 부재 한 줄씩 펼쳐 봅니다.</p></div>
+  <div class="actions"><a class="btn" id="xlsx-link" href="{{ xlsx_url }}">엑셀 내려받기</a></div></div>
+{% include "shipping/report/_tabs.html" %}
+<form method="get" class="filter-bar" aria-label="부재별 내역 필터">
+  {% include "shipping/report/_period_fields.html" %}
+  <div class="field{% if form.project.errors %} has-error{% endif %}">{{ form.project.label_tag }}{{ form.project }}{% for e in form.project.errors %}<div class="field-error">{{ e }}</div>{% endfor %}</div>
+  <div class="field{% if form.section.errors %} has-error{% endif %}">{{ form.section.label_tag }}{{ form.section }}{% for e in form.section.errors %}<div class="field-error">{{ e }}</div>{% endfor %}</div>
+  <div class="field{% if form.plant.errors %} has-error{% endif %}">{{ form.plant.label_tag }}{{ form.plant }}{% for e in form.plant.errors %}<div class="field-error">{{ e }}</div>{% endfor %}</div>
+  <div class="filter-actions"><button class="btn btn-primary" type="submit">조회</button> <a class="btn" href="{% url 'shipping:lines' %}">초기화</a></div>
+</form>
+{% if invalid %}<p class="field-error">입력값에 오류가 있어 기본 조건으로 조회했습니다.</p>{% endif %}
+<p class="muted small" id="result-count">출하 상태만 표시 · {{ start|date:"Y-m-d" }} ~ {{ end|date:"Y-m-d" }} · 총 {{ page.paginator.count }}건 · 합계 수량 {{ totals.qty }}, 면적 {{ totals.area|floatformat:2 }}㎡</p>
+
+{% if page.object_list %}
+<div class="only-desktop"><div class="table-wrap"><table class="table table-compact lines-table">
+  <thead><tr><th>출고일</th><th>프로젝트</th><th>층·구간</th><th>Ass Mark</th><th>Profile</th><th class="num">길이(mm)</th><th class="num">수량</th><th class="num">면적(㎡)</th><th>보 구분</th><th>Location</th><th>BOM 등록일</th><th>제작장</th><th>공급번호</th></tr></thead>
+  <tbody>{% for l in page %}{% with sh=l.truck.shipment b=l.bom_item %}
+    <tr><td>{{ sh.ship_date|date:"Y-m-d" }}</td><td>{{ sh.project.code }} {{ sh.project.name }}</td>
+      <td>{% if b.section.floor %}{{ b.section.floor }} {% endif %}{{ b.section.name }}</td>
+      <td>{{ b.ass_mark }}</td><td>{{ b.profile_text }}</td><td class="num">{{ b.length_mm|floatformat:"-2g" }}</td>
+      <td class="num">{{ l.quantity }}</td><td class="num">{% if l.area is not None %}{{ l.area|floatformat:2 }}{% else %}-{% endif %}</td>
+      <td>{{ b.get_member_kind_display|default:"-" }}</td><td>{{ b.location|default:"-" }}</td>
+      <td>{{ b.created_at|date:"Y-m-d" }}</td><td>{{ sh.plant.name|default:"(미지정)" }}</td>
+      <td>{% if l.truck.supply_no %}<a href="{% url 'shipping:detail' sh.pk %}">{{ l.truck.supply_no }}</a>{% else %}-{% endif %}</td></tr>{% endwith %}{% endfor %}
+  </tbody>
+  <tfoot><tr><td colspan="6">합계 (조건에 맞는 전체)</td><td class="num">{{ totals.qty }}</td><td class="num">{{ totals.area|floatformat:2 }}</td><td colspan="5"></td></tr></tfoot>
+</table></div></div>
+<div class="only-mobile"><ul class="card-list">{% for l in page %}{% with sh=l.truck.shipment b=l.bom_item %}
+  <li class="card-item">
+    <div class="card-item-title">{{ b.ass_mark }} · {{ b.profile_text }}</div>
+    <div class="card-item-meta">{{ sh.ship_date|date:"Y-m-d" }} · {{ sh.project.code }} {{ sh.project.name }}</div>
+    <dl class="kv"><dt>층·구간</dt><dd>{% if b.section.floor %}{{ b.section.floor }} {% endif %}{{ b.section.name }}</dd>
+      <dt>길이</dt><dd>{{ b.length_mm|floatformat:"-2g" }}mm</dd><dt>수량</dt><dd>{{ l.quantity }}</dd>
+      <dt>면적</dt><dd>{% if l.area is not None %}{{ l.area|floatformat:2 }}㎡{% else %}-{% endif %}</dd>
+      <dt>보 구분</dt><dd>{{ b.get_member_kind_display|default:"-" }}</dd><dt>Location</dt><dd>{{ b.location|default:"-" }}</dd>
+      <dt>BOM 등록일</dt><dd>{{ b.created_at|date:"Y-m-d" }}</dd><dt>제작장</dt><dd>{{ sh.plant.name|default:"(미지정)" }}</dd>
+      <dt>공급번호</dt><dd>{% if l.truck.supply_no %}<a href="{% url 'shipping:detail' sh.pk %}">{{ l.truck.supply_no }}</a>{% else %}-{% endif %}</dd></dl>
+  </li>{% endwith %}{% endfor %}</ul>
+  <div class="total-card">합계: 수량 {{ totals.qty }} · {{ totals.area|floatformat:2 }}㎡</div></div>
+{% if page.has_other_pages %}
+<nav class="pagination" aria-label="페이지">
+  {% if page.has_previous %}<a href="?{% if qs %}{{ qs }}&amp;{% endif %}page={{ page.previous_page_number }}">이전</a>{% else %}<span class="disabled">이전</span>{% endif %}
+  <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{% if qs %}{{ qs }}&amp;{% endif %}page={{ page.next_page_number }}">다음</a>{% else %}<span class="disabled">다음</span>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="card"><p class="muted">조건에 맞는 출고 부재가 없습니다. 기간이나 프로젝트를 바꿔 보세요.</p></div>
+{% endif %}
+{% endblock %}

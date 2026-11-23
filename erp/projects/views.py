@@ -9,7 +9,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from core.models import Floor, ItemPrice, OrderItem, Partner, Project, ProjectType, Section, SectionFile
+from core.models import Floor, ItemPrice, OrderItem, Partner, Project, ProjectType, Section, SectionFile, SiteProfile
 from core.services import audit
 
 from .forms import (
@@ -20,6 +20,7 @@ from .forms import (
     QuickPartnerForm,
     SectionFileForm,
     SectionFormSet,
+    SiteProfileForm,
 )
 
 
@@ -80,6 +81,9 @@ def project_list(request):
         request,
         "projects/list.html",
         {
+            "stats": _list_stats(),
+            "type_chips": _type_chips(params, q, customer, status, ptype),
+            "status_chips": _status_chips(params, q, customer, status, ptype),
             "page": page,
             "q": q,
             "status": status,
@@ -93,14 +97,79 @@ def project_list(request):
     )
 
 
+def _list_stats():
+    """Summary cards: always the whole company, never the current filter."""
+    agg = Project.objects.aggregate(
+        total=Count("pk"),
+        active=Count("pk", filter=Q(status=Project.Status.ACTIVE)),
+        no_manager=Count("pk", filter=Q(manager__isnull=True)),
+    )
+    amount = OrderItem.objects.aggregate(t=Sum("amount"))["t"] or 0
+    if amount >= 100_000_000:
+        amount_text, amount_unit = f"{amount / 100_000_000:,.1f}", "억원"
+    else:
+        amount_text, amount_unit = f"{amount:,.0f}", "원"
+    agg.update(amount=amount, amount_text=amount_text, amount_unit=amount_unit)
+    return agg
+
+
+def _chip_url(params, key, value):
+    p = params.copy()
+    if value:
+        p[key] = value
+    else:
+        p.pop(key, None)
+    qs = p.urlencode()
+    return f"?{qs}" if qs else "?"
+
+
+def _filtered(q, customer):
+    qs = Project.objects.all()
+    if q:
+        qs = qs.filter(Q(code__icontains=q) | Q(name__icontains=q))
+    if customer.isdigit():
+        qs = qs.filter(customer_id=int(customer))
+    return qs
+
+
+def _type_chips(params, q, customer, status, ptype):
+    """Chips per project type. Counts follow the other filters (search, customer, status), one query."""
+    base = _filtered(q, customer)
+    if status in Project.Status.values:
+        base = base.filter(status=status)
+    counts = dict(base.order_by().values_list("project_type_id").annotate(c=Count("pk")))
+    chips = [{"label": "전체", "count": sum(counts.values()), "url": _chip_url(params, "type", ""), "active": not ptype}]
+    for t in ProjectType.objects.all():
+        chips.append(
+            {"label": t.name, "count": counts.get(t.pk, 0), "url": _chip_url(params, "type", str(t.pk)), "active": ptype == str(t.pk)}
+        )
+    return chips
+
+
+def _status_chips(params, q, customer, status, ptype):
+    """Chips per status. Counts follow the other filters (search, customer, type), one query."""
+    base = _filtered(q, customer)
+    if ptype.isdigit():
+        base = base.filter(project_type_id=int(ptype))
+    counts = dict(base.order_by().values_list("status").annotate(c=Count("pk")))
+    chips = [{"label": "전체", "count": sum(counts.values()), "url": _chip_url(params, "status", ""), "active": status not in Project.Status.values}]
+    for v, label in Project.Status.choices:
+        chips.append({"label": label, "count": counts.get(v, 0), "url": _chip_url(params, "status", v), "active": status == v})
+    return chips
+
+
 def project_detail(request, pk):
     project = get_object_or_404(Project.objects.select_related("project_type", "customer", "contractor", "manager"), pk=pk)
-    sections = project.sections.select_related("floor", "fabricator").annotate(bom_count=Count("bom_items"))
+    sections = project.sections.select_related("floor", "fabricator", "plant").annotate(bom_count=Count("bom_items"))
+    site_profile = (
+        SiteProfile.objects.prefetch_related("allowed_vehicle_types").filter(project=project).first()
+    )
     return render(
         request,
         "projects/detail.html",
         {
             "project": project,
+            "site_profile": site_profile,
             "order_items": project.order_items.all(),
             "prices": project.item_prices.all(),
             "sections": sections,
@@ -137,6 +206,42 @@ def project_edit(request, pk):
         messages.success(request, "기본정보를 저장했습니다.")
         return redirect("projects:detail", pk=project.pk)
     return render(request, "projects/project_form.html", {"form": form, "project": project})
+
+
+# ---------------------------------------------------------------- site profile
+
+
+def site_profile(request, pk):
+    project = get_object_or_404(Project, pk=pk)
+    profile = SiteProfile.objects.filter(project=project).first()
+    is_new = profile is None
+    form = SiteProfileForm(request.POST or None, instance=profile)
+    if request.method == "POST" and form.is_valid():
+        changes = {}
+        for name in form.changed_data:
+            if name == "allowed_vehicle_types":
+                old = sorted(v.name for v in form.instance.allowed_vehicle_types.all()) if not is_new else []
+                new = sorted(v.name for v in form.cleaned_data[name])
+                changes[name] = {"old": old, "new": new}
+            else:
+                changes[name] = {"old": _plain(form.initial.get(name)), "new": _plain(form.cleaned_data.get(name))}
+        with transaction.atomic():
+            obj = form.save(commit=False)
+            obj.project = project
+            obj.updated_by = request.user
+            if is_new:
+                obj.created_by = request.user
+            obj.save()
+            form.save_m2m()
+            if is_new:
+                changes = {k: v["new"] for k, v in changes.items() if v["new"] not in (None, "", [], False)}
+            if changes or is_new:
+                audit.log(request.user, "create" if is_new else "update", obj, changes)
+        messages.success(request, "현장개요를 저장했습니다.")
+        return redirect("projects:detail", pk=project.pk)
+    if request.method == "POST":
+        messages.error(request, "입력 내용을 확인하세요. 오류가 있는 항목 옆에 안내가 표시됩니다.")
+    return render(request, "projects/site_profile_form.html", {"project": project, "form": form, "is_new": is_new})
 
 
 # ---------------------------------------------------------------- formset screens

@@ -29,3 +29,7 @@
 .card-actions { display: flex; gap: .5rem; margin-top: .6rem; }
 .card-actions .btn { flex: 1 1 0; }
 @media (max-width: 400px) { .field-pair { grid-column: 1 / -1; } }
+.check-grid { display: flex; flex-wrap: wrap; gap: .4rem 1rem; border: 0; margin: 0; padding: 0; min-width: 0; }
+.check-grid legend { flex: 1 0 100%; padding: 0; margin-bottom: .4rem; }
+.check-item { display: inline-flex; align-items: center; gap: .35rem; }
+.check-item input { width: auto; min-height: 0; }

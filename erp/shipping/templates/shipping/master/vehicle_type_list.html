@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}기준정보 - 차종{% endblock %}
+{% block extra_head %}{% include "shipping/master/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title"><h1>차종</h1><p class="page-sub">기준정보 · 출하에 쓰는 차종 목록입니다.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'shipping:vehicle_type_create' %}">+ 차종 추가</a></div>
+</div>
+{% if types %}
+<div class="only-desktop"><div class="table-wrap"><table class="table">
+  <thead><tr><th>차종</th><th class="num">정렬</th><th>사용</th><th></th></tr></thead>
+  <tbody>{% for t in types %}<tr>
+    <td>{{ t.name }}</td><td class="num">{{ t.sort_order }}</td>
+    <td>{% if t.is_active %}사용{% else %}<span class="badge badge-late">사용 안 함</span>{% endif %}</td>
+    <td><a class="btn btn-sm" href="{% url 'shipping:vehicle_type_edit' pk=t.pk %}">수정</a></td>
+  </tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="only-mobile"><ul class="card-list">
+  {% for t in types %}<li class="card-item">
+    <div class="card-item-title">{{ t.name }}</div>
+    <div class="card-item-meta">{% if t.is_active %}사용{% else %}<span class="badge badge-late">사용 안 함</span>{% endif %}</div>
+    <dl class="kv"><dt>정렬</dt><dd>{{ t.sort_order }}</dd></dl>
+    <div class="card-actions"><a class="btn btn-sm" href="{% url 'shipping:vehicle_type_edit' pk=t.pk %}">수정</a></div>
+  </li>{% endfor %}
+</ul></div>
+{% else %}<div class="card"><p class="muted">등록된 차종이 없습니다.</p></div>{% endif %}
+{% endblock %}

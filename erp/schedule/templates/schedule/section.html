@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}구간 일정{% endblock %}
-{% block extra_head %}<link rel="stylesheet" href="{% static 'schedule/schedule.css' %}">{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'schedule/schedule.css' %}?v=2">{% endblock %}
 {% block content %}
 <div class="page-header"><h1>구간 일정</h1>
   <div class="actions"><a class="btn" href="{% url 'schedule:board' %}">진행현황판</a><a class="btn" href="{% url 'projects:detail' project.pk %}">프로젝트</a><a class="btn" href="{% url 'bom:section' section.pk %}">구간 BOM</a></div></div>

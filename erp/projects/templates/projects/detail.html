@@ -22,6 +22,20 @@
 </section>
 
 <section class="card">
+  <div class="card-title"><h2>현장개요</h2><a class="btn btn-sm" href="{% url 'projects:site_profile' pk=project.pk %}">{% if site_profile %}수정{% else %}등록{% endif %}</a></div>
+  {% if site_profile %}
+  <dl class="kv kv-wide">
+    <dt>현장 주소</dt><dd>{{ site_profile.address|default:"-" }}</dd>
+    <dt>진입 안내</dt><dd>{{ site_profile.access_note|linebreaksbr|default:"-" }}</dd>
+    <dt>하차 담당자</dt><dd>{% if site_profile.unloading_contact_name or site_profile.unloading_contact_phone %}{{ site_profile.unloading_contact_name }}{% if site_profile.unloading_contact_phone %} ({{ site_profile.unloading_contact_phone }}){% endif %}{% else %}-{% endif %}</dd>
+    <dt>코너철판</dt><dd>{% if site_profile.has_corner_plate %}있음{% else %}없음{% endif %}</dd>
+    <dt>진입 가능 차량</dt><dd>{% for v in site_profile.allowed_vehicle_types.all %}<span class="badge badge-planned">{{ v.name }}</span> {% empty %}-{% endfor %}</dd>
+    <dt>특이사항</dt><dd>{{ site_profile.note|linebreaksbr|default:"-" }}</dd>
+  </dl>
+  {% else %}<p class="muted">등록된 현장개요가 없습니다.</p>{% endif %}
+</section>
+
+<section class="card">
   <div class="card-title"><h2>수주정보</h2><a class="btn btn-sm" href="{% url 'projects:order_items' pk=project.pk %}">수정</a></div>
   {% if order_items %}
   <div class="only-desktop"><div class="table-wrap"><table class="table table-compact">
@@ -55,11 +69,11 @@
   <div class="card-title"><h2>구간</h2><a class="btn btn-sm" href="{% url 'projects:sections' pk=project.pk %}">수정</a></div>
   {% if sections %}
   <div class="only-desktop"><div class="table-wrap"><table class="table table-compact">
-    <thead><tr><th>구간</th><th>층</th><th>출고예정</th><th>출고확정</th><th>제작</th><th>외주제작처</th><th>상태</th><th class="num">BOM</th><th>이동</th></tr></thead>
+    <thead><tr><th>구간</th><th>층</th><th>출고예정</th><th>출고확정</th><th>제작</th><th>제작장</th><th>외주제작처</th><th>상태</th><th class="num">BOM</th><th>이동</th></tr></thead>
     <tbody>{% for s in sections %}<tr>
       <td>{{ s.name }}</td><td>{{ s.floor.name|default:"-" }}</td>
       <td class="nowrap">{{ s.planned_ship_date|date:"Y-m-d" }}</td><td class="nowrap">{{ s.confirmed_ship_date|date:"Y-m-d"|default:"-" }}</td>
-      <td>{{ s.get_make_type_display }}</td><td>{{ s.fabricator.name|default:"-" }}</td>
+      <td>{{ s.get_make_type_display }}</td><td>{{ s.plant.name|default:"-" }}</td><td>{{ s.fabricator.name|default:"-" }}</td>
       <td>{% if s.is_completed %}<span class="badge badge-done">완료</span>{% else %}<span class="badge badge-planned">진행</span>{% endif %}</td>
       <td class="num">{{ s.bom_count }}</td>
       <td class="nowrap"><a class="btn btn-sm" href="{% url 'bom:section' pk=s.pk %}">BOM</a> <a class="btn btn-sm" href="{% url 'schedule:section' pk=s.pk %}">일정</a></td>
@@ -68,7 +82,7 @@
   <div class="only-mobile"><ul class="card-list">
     {% for s in sections %}<li class="card-item">
       <div class="card-item-title">{{ s.name }}{% if s.floor %} · {{ s.floor.name }}{% endif %} {% if s.is_completed %}<span class="badge badge-done">완료</span>{% else %}<span class="badge badge-planned">진행</span>{% endif %}</div>
-      <dl class="kv"><dt>출고예정</dt><dd>{{ s.planned_ship_date|date:"Y-m-d" }}</dd><dt>출고확정</dt><dd>{{ s.confirmed_ship_date|date:"Y-m-d"|default:"-" }}</dd><dt>제작</dt><dd>{{ s.get_make_type_display }}</dd><dt>외주제작처</dt><dd>{{ s.fabricator.name|default:"-" }}</dd><dt>BOM</dt><dd>{{ s.bom_count }}건</dd></dl>
+      <dl class="kv"><dt>출고예정</dt><dd>{{ s.planned_ship_date|date:"Y-m-d" }}</dd><dt>출고확정</dt><dd>{{ s.confirmed_ship_date|date:"Y-m-d"|default:"-" }}</dd><dt>제작</dt><dd>{{ s.get_make_type_display }}</dd><dt>제작장</dt><dd>{{ s.plant.name|default:"-" }}</dd><dt>외주제작처</dt><dd>{{ s.fabricator.name|default:"-" }}</dd><dt>BOM</dt><dd>{{ s.bom_count }}건</dd></dl>
       <div class="card-actions"><a class="btn btn-sm" href="{% url 'bom:section' pk=s.pk %}">BOM</a> <a class="btn btn-sm" href="{% url 'schedule:section' pk=s.pk %}">일정</a></div>
     </li>{% endfor %}
   </ul></div>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}구간 BOM - {{ section.name }}{% endblock %}
-{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}">{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}?v=2">{% endblock %}
 {% block content %}
 <div class="page-header">
   <div>
@@ -17,19 +17,28 @@
 </div>
 
 <div class="card">
-  <div class="card-title"><h2>BOM 목록</h2><span class="muted small">{{ totals.rows }}건 / 수량 합계 {{ totals.qty }}</span></div>
+  <div class="card-title"><h2>BOM 목록</h2><span class="muted small">{{ totals.rows }}건 / 수량 합계 {{ totals.qty }} / 총 면적 {{ totals.area|floatformat:2 }}㎡</span></div>
+  {% if totals.unknown_area %}<p class="message message-warning">면적을 계산하지 못한 행이 {{ totals.unknown_area }}건 있습니다(총 면적에서 제외). 해당 행의 "규격 확인 필요"를 눌러 폭을 입력하세요.</p>{% endif %}
   {% if page.object_list %}
   <div class="only-desktop">
   <div class="table-wrap">
     <table class="table table-compact">
-      <thead><tr><th>Ass Mark</th><th>Profile</th><th class="num">Length(mm)</th><th class="num">수량</th><th>FINISH</th><th>LOCATION</th><th>구성 상태</th><th>비고</th><th></th></tr></thead>
+      <thead><tr><th>Ass Mark</th><th>Profile</th><th class="num">Length(mm)</th><th class="num">하판 폭</th><th class="num">측판1 폭</th><th class="num">측판2 폭</th><th class="num">면적(㎡/개)</th><th class="num">면적(㎡)</th><th>보 구분</th><th class="num">수량</th><th class="num">출하 수량</th><th class="num">남은 수량</th><th>FINISH</th><th>LOCATION</th><th>구성 상태</th><th>비고</th><th></th></tr></thead>
       <tbody>
       {% for it in page %}
         <tr>
           <td>{{ it.ass_mark }}</td>
           <td>{{ it.profile_text }}</td>
           <td class="num">{{ it.length_mm|floatformat:"-2" }}</td>
+          <td class="num">{{ it.bottom_width|default_if_none:"-" }}</td>
+          <td class="num">{{ it.side1_width|default_if_none:"-" }}</td>
+          <td class="num">{{ it.side2_width|default_if_none:"-" }}</td>
+          <td class="num">{% if it.unit_area is None %}{% include "bom/_check_spec.html" %}{% else %}{{ it.unit_area|floatformat:2 }}{% endif %}</td>
+          <td class="num">{% if it.line_area is None %}-{% else %}{{ it.line_area|floatformat:2 }}{% endif %}</td>
+          <td class="nowrap">{% include "bom/_kind.html" %}</td>
           <td class="num">{{ it.quantity }}</td>
+          <td class="num">{{ it.shipped_total }}</td>
+          <td class="num">{{ it.remaining }}</td>
           <td>{{ it.finish }}</td>
           <td>{{ it.location }}</td>
           <td class="nowrap">{% include "bom/_status.html" %}</td>
@@ -38,7 +47,7 @@
         </tr>
       {% endfor %}
       </tbody>
-      <tfoot><tr class="bom-totals"><td colspan="3">합계 ({{ totals.rows }}건)</td><td class="num">{{ totals.qty }}</td><td colspan="5"></td></tr></tfoot>
+      <tfoot><tr class="bom-totals"><td colspan="3">합계 ({{ totals.rows }}건)</td><td colspan="4" class="num">총 면적(㎡)</td><td class="num">{{ totals.area|floatformat:2 }}</td><td></td><td class="num">{{ totals.qty }}</td><td colspan="7"></td></tr></tfoot>
     </table>
   </div>
   </div>
@@ -50,7 +59,12 @@
         <div class="card-item-meta">{% include "bom/_status.html" %}</div>
         <dl class="kv">
           <dt>Length(mm)</dt><dd>{{ it.length_mm|floatformat:"-2" }}</dd>
+          <dt>폭(하판/측판1/측판2)</dt><dd>{{ it.bottom_width|default_if_none:"-" }} / {{ it.side1_width|default_if_none:"-" }} / {{ it.side2_width|default_if_none:"-" }}</dd>
+          <dt>면적(㎡/개)</dt><dd>{% if it.unit_area is None %}{% include "bom/_check_spec.html" %}{% else %}{{ it.unit_area|floatformat:2 }}{% endif %}</dd>
+          <dt>면적(㎡)</dt><dd>{% if it.line_area is None %}-{% else %}{{ it.line_area|floatformat:2 }}{% endif %}</dd>
+          <dt>보 구분</dt><dd>{% include "bom/_kind.html" %}</dd>
           <dt>수량</dt><dd>{{ it.quantity }}</dd>
+          <dt>출하 / 남은</dt><dd>{{ it.shipped_total }} / {{ it.remaining }}</dd>
           <dt>FINISH</dt><dd>{{ it.finish|default:"-" }}</dd>
           <dt>LOCATION</dt><dd>{{ it.location|default:"-" }}</dd>
           <dt>비고</dt><dd>{% include "bom/_note.html" %}</dd>
@@ -58,7 +72,7 @@
         <div style="margin-top:.5rem">{% include "bom/_delete.html" %}</div>
       </li>
       {% endfor %}
-      <li class="card-item bom-totals-card"><strong>합계 {{ totals.rows }}건 / 수량 {{ totals.qty }}</strong></li>
+      <li class="card-item bom-totals-card"><strong>합계 {{ totals.rows }}건 / 수량 {{ totals.qty }} / 총 면적 {{ totals.area|floatformat:2 }}㎡</strong></li>
     </ul>
   </div>
   {% if page.has_other_pages %}
@@ -110,4 +124,4 @@
   {% else %}<p class="muted">업로드 이력이 없습니다.</p>{% endif %}
 </div>
 {% endblock %}
-{% block extra_js %}<script src="{% static 'bom/bom.js' %}"></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'bom/bom.js' %}?v=2"></script>{% endblock %}

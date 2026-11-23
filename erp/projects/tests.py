@@ -451,3 +451,138 @@ class UiTextTests(Base):
         self.assertContains(r, "card-actions")
         r = self.client.get(reverse("projects:sections", args=[p.pk]))
         self.assertContains(r, "field-pair")
+
+
+class SiteProfileTests(Base):
+    def setUp(self):
+        super().setUp()
+        from core.models import SiteProfile, VehicleType
+
+        self.SiteProfile = SiteProfile
+        self.p = self.make_project()
+        self.url = reverse("projects:site_profile", args=[self.p.pk])
+        self.v5 = VehicleType.objects.get(name="5톤")
+        self.v25 = VehicleType.objects.get(name="25톤")
+
+    def data(self, **kw):
+        d = {
+            "address": "테스트시 예시구 1번지",
+            "access_note": "좁은 진입로",
+            "unloading_contact_name": "담당 가나",
+            "unloading_contact_phone": "010-0000-0000",
+            "has_corner_plate": "on",
+            "allowed_vehicle_types": [self.v5.pk, self.v25.pk],
+            "note": "오전 하차",
+        }
+        d.update(kw)
+        return d
+
+    def test_anonymous_redirects(self):
+        self.client.logout()
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/accounts/login/", r["Location"])
+        self.assertEqual(self.client.post(self.url, self.data()).status_code, 302)
+        self.assertFalse(self.SiteProfile.objects.exists())
+
+    def test_detail_empty_and_filled(self):
+        r = self.client.get(reverse("projects:detail", args=[self.p.pk]))
+        self.assertContains(r, "등록된 현장개요가 없습니다")
+        self.assertContains(r, self.url)
+        self.client.post(self.url, self.data())
+        r = self.client.get(reverse("projects:detail", args=[self.p.pk]))
+        self.assertContains(r, "좁은 진입로")
+        self.assertContains(r, "5톤")
+        self.assertContains(r, "코너철판")
+
+    def test_get_form_new_and_existing(self):
+        self.assertContains(self.client.get(self.url), "현장개요 등록")
+        self.assertFalse(self.SiteProfile.objects.exists())  # GET never creates a row
+        self.client.post(self.url, self.data())
+        self.assertContains(self.client.get(self.url), "현장개요 수정")
+
+    def test_create_then_update_one_per_project(self):
+        r = self.client.post(self.url, self.data())
+        self.assertRedirects(r, reverse("projects:detail", args=[self.p.pk]))
+        sp = self.SiteProfile.objects.get(project=self.p)
+        self.assertEqual(sp.created_by, self.user)
+        self.assertTrue(sp.has_corner_plate)
+        self.assertEqual(set(sp.allowed_vehicle_types.all()), {self.v5, self.v25})
+        self.assertTrue(AuditLog.objects.filter(model="core.SiteProfile", action="create").exists())
+        d = self.data(address="변경된 주소", allowed_vehicle_types=[self.v5.pk])
+        del d["has_corner_plate"]
+        self.client.post(self.url, d)
+        self.assertEqual(self.SiteProfile.objects.filter(project=self.p).count(), 1)
+        sp.refresh_from_db()
+        self.assertEqual(sp.address, "변경된 주소")
+        self.assertFalse(sp.has_corner_plate)
+        self.assertEqual(list(sp.allowed_vehicle_types.all()), [self.v5])
+        log = AuditLog.objects.filter(model="core.SiteProfile", action="update").latest("id")
+        self.assertIn("address", log.changes)
+        self.assertIn("allowed_vehicle_types", log.changes)
+
+    def test_invalid_post_shows_errors(self):
+        r = self.client.post(self.url, self.data(address="가" * 201))
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "field-error")
+        self.assertFalse(self.SiteProfile.objects.exists())
+
+    def test_inactive_vehicle_type_not_offered(self):
+        self.v25.is_active = False
+        self.v25.save()
+        r = self.client.post(self.url, self.data())
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(self.SiteProfile.objects.exists())
+        self.assertNotContains(self.client.get(self.url), "25톤")
+
+
+class SectionPlantTests(Base):
+    def setUp(self):
+        super().setUp()
+        from core.models import Plant
+
+        self.Plant = Plant
+        self.p = self.make_project()
+        self.url = reverse("projects:sections", args=[self.p.pk])
+
+    def row(self, i, **kw):
+        base = {"name": "A구간", "planned_ship_date": "2026-04-01", "make_type": "IN"}
+        base.update(kw)
+        return {f"sections-{i}-{k}": v for k, v in base.items()}
+
+    def test_works_without_any_plant(self):
+        r = self.client.get(self.url)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "제작장 관리")
+        d = mgmt("sections", 1)
+        d.update(self.row(0))
+        self.assertEqual(self.client.post(self.url, d).status_code, 302)
+        self.assertIsNone(self.p.sections.get().plant)
+        r = self.client.get(reverse("projects:detail", args=[self.p.pk]))
+        self.assertEqual(r.status_code, 200)
+
+    def test_save_plant_and_show_on_detail(self):
+        plant = self.Plant.objects.create(name="예시 제작장")
+        d = mgmt("sections", 1)
+        d.update(self.row(0, plant=plant.pk))
+        self.client.post(self.url, d)
+        s = self.p.sections.get()
+        self.assertEqual(s.plant, plant)
+        self.assertContains(self.client.get(reverse("projects:detail", args=[self.p.pk])), "예시 제작장")
+        log = AuditLog.objects.filter(model="core.Section", action="create").latest("id")
+        self.assertIn("plant", log.changes)
+        # clearing is allowed
+        d = mgmt("sections", 1, 1)
+        d.update({"sections-0-id": s.pk, "sections-0-project": self.p.pk, **self.row(0)})
+        self.client.post(self.url, d)
+        s.refresh_from_db()
+        self.assertIsNone(s.plant)
+
+    def test_inactive_plant_not_selectable(self):
+        plant = self.Plant.objects.create(name="중단 제작장", is_active=False)
+        d = mgmt("sections", 1)
+        d.update(self.row(0, plant=plant.pk))
+        r = self.client.post(self.url, d)
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "field-error")
+        self.assertEqual(self.p.sections.count(), 0)

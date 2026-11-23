@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}현장개요 {% if is_new %}등록{% else %}수정{% endif %}{% endblock %}
+{% block extra_head %}{% include "projects/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>현장개요 {% if is_new %}등록{% else %}수정{% endif %}</h1><p class="muted small">{{ project.code }} {{ project.name }}</p></div>
+</div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% for e in form.non_field_errors %}<div class="message message-error">{{ e }}</div>{% endfor %}
+  <div class="card">
+    <h2>현장 위치와 하차</h2>
+    <div class="form-grid">
+      {% include "projects/_field.html" with field=form.address %}
+      {% include "projects/_field.html" with field=form.unloading_contact_name %}
+      {% include "projects/_field.html" with field=form.unloading_contact_phone %}
+      {% include "projects/_field.html" with field=form.has_corner_plate %}
+    </div>
+    {% include "projects/_field.html" with field=form.access_note %}
+  </div>
+  <div class="card">
+    <h2>진입 가능 차량</h2>
+    {% if form.allowed_vehicle_types.field.queryset %}
+    <fieldset class="check-grid{% if form.allowed_vehicle_types.errors %} has-error{% endif %}">
+      <legend class="small muted">현장에 들어올 수 있는 차종을 모두 선택하세요.</legend>
+      {% for box in form.allowed_vehicle_types %}<label class="check-item">{{ box.tag }} {{ box.choice_label }}</label>{% endfor %}
+    </fieldset>
+    {% for e in form.allowed_vehicle_types.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    {% else %}<p class="muted">등록된 차종이 없습니다. 차종은 <a href="{% url 'shipping:vehicle_type_list' %}">차종 관리</a>에서 추가할 수 있습니다.</p>{% endif %}
+  </div>
+  <div class="card">
+    {% include "projects/_field.html" with field=form.note %}
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">저장</button>
+    <a class="btn" href="{% url 'projects:detail' pk=project.pk %}">취소</a>
+  </div>
+</form>
+{% endblock %}

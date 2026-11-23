@@ -1,0 +1,94 @@
+{# 거래명세서 한 쪽. 변수: st(차량 데이터), page(쪽 데이터), notice #}
+<section class="st-sheet" aria-label="{{ st.sheet_name }} 거래명세서 {{ page.number }}쪽">
+<table class="st">
+  <colgroup>
+    <col style="width:4.6%"><col style="width:9.7%"><col style="width:7%"><col style="width:11.3%">
+    <col style="width:5.8%"><col style="width:5.8%"><col style="width:5.8%"><col style="width:1.9%">
+    <col style="width:5.7%"><col style="width:1.9%"><col style="width:5.7%"><col style="width:10%">
+    <col style="width:8.6%"><col style="width:16.1%">
+  </colgroup>
+  <tbody>
+    <tr class="h-title"><th colspan="14" rowspan="2" class="st-title">거 래 명 세 서</th></tr>
+    <tr class="h-title"></tr>
+    <tr>
+      <th rowspan="5" class="lab party">공급자</th>
+      <th class="lab">공급번호</th>
+      <td colspan="6" class="strong">{{ st.header.supply_no }}</td>
+      <th rowspan="5" class="lab party recv">공급받는자</th>
+      <th colspan="2" rowspan="3" class="lab">상호</th>
+      <td colspan="3" class="strong big">{{ st.header.customer_name }}{% if st.header.contractor_name %} (원청 {{ st.header.contractor_name }}){% endif %}</td>
+    </tr>
+    <tr>
+      <th rowspan="2" class="lab">상&nbsp;&nbsp;&nbsp;&nbsp;호</th>
+      <td colspan="6" rowspan="2" class="strong name">{{ st.header.supplier_name }}</td>
+      <td colspan="3" class="strong big">{{ st.header.section_label }}</td>
+    </tr>
+    <tr>
+      <td colspan="3" class="strong big">{{ st.header.site_name }}</td>
+    </tr>
+    <tr>
+      <th class="lab">주&nbsp;&nbsp;&nbsp;&nbsp;소</th>
+      <td colspan="6" class="small">{{ st.header.supplier_address }}</td>
+      <th colspan="2" class="lab">주소</th>
+      <td colspan="3">{{ st.header.site_address }}</td>
+    </tr>
+    <tr>
+      <th class="lab">전화번호</th>
+      <td colspan="6">{{ st.header.supplier_phone }}</td>
+      <th colspan="2" class="lab">담당자</th>
+      <td colspan="3">{{ st.header.unloading_contact }}</td>
+    </tr>
+    <tr class="h-notice"><td colspan="14">{{ notice }}</td></tr>
+    <tr>
+      <th colspan="2" class="lab">출 하 일</th>
+      <td colspan="5" class="strong">{{ st.header.ship_date|date:"Y-m-d" }}</td>
+      <th colspan="2" class="lab">운송회사</th>
+      <td colspan="5">{{ st.header.carrier }}</td>
+    </tr>
+    <tr>
+      <th colspan="2" class="lab">현장 도착일</th>
+      <td colspan="5" class="strong">{{ st.header.arrival_date|date:"Y-m-d" }}</td>
+      <th colspan="2" class="lab">차종</th>
+      <td colspan="2">{{ st.header.vehicle_type }}</td>
+      <th class="lab">차량번호</th>
+      <td colspan="2">{{ st.header.plate_no }}</td>
+    </tr>
+    <tr>
+      <th colspan="2" class="lab">출 하 담 당</th>
+      <td colspan="5">{{ st.header.dispatcher }}</td>
+      <th colspan="2" class="lab">운전기사</th>
+      <td colspan="2">{{ st.header.driver_name }}</td>
+      <th class="lab">연 락 처</th>
+      <td colspan="2">{{ st.header.driver_phone }}</td>
+    </tr>
+    <tr class="h-gap"><td colspan="14"></td></tr>
+    <tr class="colhead">
+      <th rowspan="2">no</th><th colspan="2" rowspan="2">DWG.NO</th><th colspan="4">규격</th>
+      <th colspan="3" rowspan="2">길이</th><th rowspan="2">수량</th><th rowspan="2">면적(㎡)</th>
+      <th rowspan="2">위치</th><th rowspan="2">Location</th>
+    </tr>
+    <tr class="colhead"><th>규격</th><th>하판</th><th>측판1</th><th>측판2</th></tr>
+    {% for row in page.rows %}
+    {% if row.kind == "item" %}{% with it=row.item %}
+    <tr class="r">
+      <td>{{ it.no }}</td><td colspan="2" class="l fit">{{ it.ass_mark }}</td><td class="fit">{{ it.profile }}</td>
+      <td>{{ it.bottom }}</td><td>{{ it.side1 }}</td><td>{{ it.side2 }}</td>
+      <td colspan="3">{{ it.length }}</td><td>{{ it.quantity }}</td><td>{{ it.area|floatformat:2 }}</td>
+      <td class="fit sm">{{ it.kind }}</td><td class="fit">{{ it.location }}</td>
+    </tr>{% endwith %}
+    {% elif row.kind == "end" %}
+    <tr class="r"><td></td><td colspan="2"></td><td></td><td></td><td></td><td></td><td colspan="3" class="end">이하여백</td><td></td><td></td><td></td><td></td></tr>
+    {% else %}
+    <tr class="r"><td></td><td colspan="2"></td><td></td><td></td><td></td><td></td><td colspan="3"></td><td></td><td></td><td></td><td></td></tr>
+    {% endif %}
+    {% endfor %}
+    <tr class="total">
+      <td colspan="10" class="r-al">계</td>
+      <td>{% if page.is_last %}{{ st.total_quantity }}{% endif %}</td>
+      <td>{% if page.is_last %}{{ st.total_area|floatformat:2 }}{% endif %}</td>
+      <td colspan="2"></td>
+    </tr>
+  </tbody>
+</table>
+<p class="st-page">쪽 {{ page.number }}/{{ page.total }}</p>
+</section>

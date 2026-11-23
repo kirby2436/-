@@ -5,7 +5,12 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from core.models import ActivityType, AuditLog, Floor, Partner, Project, ProjectType, Section, SectionActivity
+from decimal import Decimal
+
+from core.models import (
+    ActivityType, AuditLog, BomItem, Floor, Partner, Plant, Project, ProjectType, Section, SectionActivity,
+    Shipment, ShipmentLine, ShipmentTruck,
+)
 from schedule import selectors
 
 User = get_user_model()
@@ -272,9 +277,105 @@ class DashboardTests(Base):
     def test_empty_state(self):
         r = self.client.get(reverse("schedule:home"))
         self.assertEqual(r.status_code, 200)
-        self.assertContains(r, "출고 예정인 구간이 없습니다")
+        self.assertContains(r, "출고 예정인 출하와 구간이 없습니다")
         self.assertContains(r, "지연된 Activity가 없습니다")
         self.assertContains(r, reverse("projects:list"))
+
+
+def make_shipment(project, section, ship_date, status=Shipment.Status.PLANNED, qty=2, trucks=1, plant=None, ass="B1"):
+    item = BomItem.objects.create(
+        section=section, ass_mark=ass, profile_text="NB400X450", length_mm=Decimal("5000"), quantity=50
+    )
+    BomItem.objects.filter(pk=item.pk).update(unit_area=Decimal("2.00"))
+    sh = Shipment.objects.create(project=project, ship_date=ship_date, status=status, plant=plant)
+    for i in range(trucks):
+        truck = ShipmentTruck.objects.create(shipment=sh, seq=i + 1)
+        ShipmentLine.objects.create(truck=truck, bom_item=item, quantity=qty, area=Decimal("2.00") * qty)
+    return sh
+
+
+class DashboardShipmentTests(Base):
+    # Current week: Mon 3/16 .. Sun 3/22; current month: March 2026.
+    def test_planned_shipments_this_week(self):
+        p = make_project("진행")
+        sec = make_section(p, "출하구간", ship=date(2026, 3, 20), floor=Floor.objects.create(name="2F"))
+        this_week = make_shipment(p, sec, date(2026, 3, 19), trucks=2, qty=3)
+        next_week = make_shipment(p, sec, date(2026, 3, 23), ass="B2")
+        last_week = make_shipment(p, sec, date(2026, 3, 15), ass="B3")
+        canceled = make_shipment(p, sec, date(2026, 3, 18), Shipment.Status.CANCELED, ass="B4")
+        shipped = make_shipment(p, sec, date(2026, 3, 17), Shipment.Status.SHIPPED, ass="B5")
+        r = self.client.get(reverse("schedule:home"))
+        self.assertEqual(r.status_code, 200)
+        shown = [sh.pk for sh in r.context["planned_shipments"]]
+        self.assertEqual(shown, [this_week.pk])
+        for sh in (next_week, last_week, canceled, shipped):
+            self.assertNotIn(sh.pk, shown)
+        self.assertContains(r, reverse("shipping:detail", args=[this_week.pk]))
+        self.assertContains(r, "2F 출하구간")
+        self.assertContains(r, "2대")
+        self.assertContains(r, "12.00")  # 2 trucks x 3 pieces x 2.00
+
+    def test_planned_shipments_sorted_by_date(self):
+        p = make_project("진행")
+        sec = make_section(p, ship=date(2026, 3, 20))
+        later = make_shipment(p, sec, date(2026, 3, 21), ass="B1")
+        sooner = make_shipment(p, sec, date(2026, 3, 16), ass="B2")
+        r = self.client.get(reverse("schedule:home"))
+        self.assertEqual([sh.pk for sh in r.context["planned_shipments"]], [sooner.pk, later.pk])
+
+    def test_section_with_shipment_is_not_unregistered(self):
+        p = make_project("진행")
+        covered = make_section(p, "예정있음", ship=date(2026, 3, 20))
+        make_shipment(p, covered, date(2026, 3, 20))
+        partly = make_section(p, "일부출하", ship=date(2026, 3, 19))
+        make_shipment(p, partly, date(2026, 3, 10), Shipment.Status.SHIPPED)
+        bare = make_section(p, "미등록", ship=date(2026, 3, 18))
+        after_cancel = make_section(p, "취소됨", ship=date(2026, 3, 17))
+        make_shipment(p, after_cancel, date(2026, 3, 17), Shipment.Status.CANCELED)
+        r = self.client.get(reverse("schedule:home"))
+        self.assertEqual([s.pk for s in r.context["ship_sections"]], [after_cancel.pk, bare.pk])
+        self.assertContains(r, "출하 미등록")
+        self.assertEqual(r.context["week_total"], 3)  # 1 planned shipment + 2 sections
+
+    def test_empty_week_message(self):
+        r = self.client.get(reverse("schedule:home"))
+        self.assertContains(r, "출고 예정인 출하와 구간이 없습니다")
+        self.assertNotContains(r, "출하 미등록")
+
+    def test_month_summary(self):
+        p = make_project("진행")
+        sec = make_section(p, ship=date(2026, 3, 20))
+        make_shipment(p, sec, date(2026, 3, 2), Shipment.Status.SHIPPED, qty=3, trucks=2, ass="B1")  # 12.00
+        make_shipment(p, sec, date(2026, 3, 31), Shipment.Status.SHIPPED, qty=1, ass="B2")  # 2.00
+        make_shipment(p, sec, date(2026, 2, 28), Shipment.Status.SHIPPED, ass="B3")  # last month
+        make_shipment(p, sec, date(2026, 3, 10), Shipment.Status.PLANNED, ass="B4")
+        make_shipment(p, sec, date(2026, 3, 11), Shipment.Status.CANCELED, ass="B5")
+        r = self.client.get(reverse("schedule:home"))
+        t = r.context["month_totals"]
+        self.assertEqual((t["shipments"], t["trucks"], t["area"]), (2, 3, Decimal("14.00")))
+        self.assertContains(r, "이번 달 출고 실적")
+        self.assertContains(r, "14.00")
+        self.assertContains(r, reverse("shipping:performance"))
+
+    def test_month_summary_empty(self):
+        r = self.client.get(reverse("schedule:home"))
+        self.assertEqual(r.context["month_totals"]["shipments"], 0)
+        self.assertContains(r, "이번 달 출고 실적")
+
+    def test_query_count_constant(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        p = make_project("진행")
+        sec = make_section(p, ship=date(2026, 3, 20))
+        make_shipment(p, sec, date(2026, 3, 18), ass="A0")
+        with CaptureQueriesContext(connection) as small:
+            self.client.get(reverse("schedule:home"))
+        for i in range(5):
+            make_shipment(p, make_section(make_project(f"추가{i}"), "구간", ship=date(2026, 3, 19)), date(2026, 3, 19), trucks=2, ass=f"A{i + 1}")
+        with CaptureQueriesContext(connection) as big:
+            self.client.get(reverse("schedule:home"))
+        self.assertEqual(len(small), len(big))
 
 
 class SelectorTests(TestCase):

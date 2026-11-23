@@ -24,6 +24,7 @@ INSTALLED_APPS = [
     "projects",
     "bom",
     "schedule",
+    "shipping",
 ]
 
 MIDDLEWARE = [
@@ -51,6 +52,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.nav",
             ],
         },
     },
@@ -62,7 +64,7 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": os.environ.get("ERP_DB_PATH") or BASE_DIR / "db.sqlite3",
     }
 }
 
@@ -89,3 +91,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "schedule:home"
 LOGOUT_REDIRECT_URL = "login"
+
+# Supplier info printed on statements. Set in the environment; never commit real values.
+COMPANY_INFO = {
+    "name": os.environ.get("ERP_COMPANY_NAME", "(회사명)"),
+    "address": os.environ.get("ERP_COMPANY_ADDRESS", ""),
+    "phone": os.environ.get("ERP_COMPANY_PHONE", ""),
+    "fax": os.environ.get("ERP_COMPANY_FAX", ""),
+}

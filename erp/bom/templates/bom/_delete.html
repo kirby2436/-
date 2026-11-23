@@ -1,1 +1,1 @@
-<form method="post" action="{% url 'bom:item_delete' it.pk %}" data-confirm="{{ it.ass_mark }} 행을 삭제할까요?" class="inline-form">{% csrf_token %}<button type="submit" class="btn btn-sm bom-del">삭제</button></form>
+{% if it.in_shipment %}<span class="badge badge-warn">출하에 담김 - 삭제 불가</span>{% else %}<form method="post" action="{% url 'bom:item_delete' it.pk %}" data-confirm="{{ it.ass_mark }} 행을 삭제할까요?" class="inline-form">{% csrf_token %}<button type="submit" class="btn btn-sm bom-del">삭제</button></form>{% endif %}

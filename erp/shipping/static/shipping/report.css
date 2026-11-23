@@ -1,0 +1,9 @@
+.table tfoot td, .table tfoot th { background: var(--primary-tint); font-weight: 700; border-top: 2px solid var(--border); }
+.total-card { background: var(--primary-tint); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem .9rem; margin-top: .75rem; font-weight: 700; }
+.note-box { background: var(--primary-soft); border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem .9rem; margin: 0 0 1rem; font-size: .9rem; }
+.unshipped-item { border-bottom: 1px solid var(--border); padding: .3rem 0; overflow-wrap: anywhere; }
+.unshipped-item:last-child { border-bottom: 0; }
+details.rem summary { cursor: pointer; color: var(--primary); }
+details.rem[open] > summary { margin-bottom: .4rem; }
+details.rem .table { font-size: .9rem; }
+.lines-table td, .lines-table th { white-space: nowrap; }

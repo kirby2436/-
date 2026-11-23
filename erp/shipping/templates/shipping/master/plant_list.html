@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}기준정보 - 제작장{% endblock %}
+{% block extra_head %}{% include "shipping/master/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title"><h1>제작장</h1><p class="page-sub">기준정보 · 제작장 정보를 관리합니다. 출하 등록에서 선택하는 목록입니다.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'shipping:plant_create' %}">+ 제작장 추가</a></div>
+</div>
+<p class="muted small">제작장 {{ count }}곳. 위치별로 묶어 보여줍니다. 사용하지 않는 제작장은 삭제하지 않고 "사용 안 함"으로 바꿉니다.</p>
+{% for g in groups %}
+<section class="card">
+  <h2>{{ g.site|default:"위치 미지정" }}</h2>
+  <div class="only-desktop"><div class="table-wrap"><table class="table table-compact">
+    <thead><tr><th>제작장</th><th>구분</th><th>운영 업체</th><th class="num">정렬</th><th>사용</th><th></th></tr></thead>
+    <tbody>{% for p in g.plants %}<tr>
+      <td>{{ p.name }}</td>
+      <td>{% if p.is_outsourced %}<span class="badge badge-warn">외주</span>{% else %}<span class="badge badge-planned">자사</span>{% endif %}</td>
+      <td>{% if p.is_outsourced %}{{ p.operator.name }}{% else %}-{% endif %}</td>
+      <td class="num">{{ p.sort_order }}</td>
+      <td>{% if p.is_active %}사용{% else %}<span class="badge badge-late">사용 안 함</span>{% endif %}</td>
+      <td><a class="btn btn-sm" href="{% url 'shipping:plant_edit' pk=p.pk %}">수정</a></td>
+    </tr>{% endfor %}</tbody>
+  </table></div></div>
+  <div class="only-mobile"><ul class="card-list">
+    {% for p in g.plants %}<li class="card-item">
+      <div class="card-item-title">{{ p.name }}</div>
+      <div class="card-item-meta">{% if p.is_outsourced %}<span class="badge badge-warn">외주</span>{% else %}<span class="badge badge-planned">자사</span>{% endif %}
+        {% if p.is_active %}사용{% else %}<span class="badge badge-late">사용 안 함</span>{% endif %}</div>
+      <dl class="kv"><dt>운영 업체</dt><dd>{% if p.is_outsourced %}{{ p.operator.name }}{% else %}-{% endif %}</dd><dt>정렬</dt><dd>{{ p.sort_order }}</dd></dl>
+      <div class="card-actions"><a class="btn btn-sm" href="{% url 'shipping:plant_edit' pk=p.pk %}">수정</a></div>
+    </li>{% endfor %}
+  </ul></div>
+</section>
+{% empty %}
+<div class="card"><p class="muted">등록된 제작장이 없습니다. "제작장 추가"로 등록하세요.</p></div>
+{% endfor %}
+{% endblock %}

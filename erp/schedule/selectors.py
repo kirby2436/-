@@ -1,12 +1,15 @@
 """Query logic for the schedule screens. Every function takes `today` explicitly."""
 
-from datetime import timedelta
+from calendar import monthrange
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.db.models import Exists, OuterRef, Prefetch, Q
 
-from core.models import ActivityType, AuditLog, Project, Section, SectionActivity
+from core.models import ActivityType, AuditLog, Project, Section, SectionActivity, Shipment, ShipmentLine
+from core.services import shipping
 from core.services.schedule import activity_state
+from shipping import reports
 
 STATE_LABELS = {
     "done": ("완료", "✔"),
@@ -119,20 +122,37 @@ def week_range(today):
     return monday, monday + timedelta(days=6)
 
 
+def month_range(today):
+    return date(today.year, today.month, 1), date(today.year, today.month, monthrange(today.year, today.month)[1])
+
+
 def dashboard(today):
     monday, sunday = week_range(today)
+    # Planned shipments dated this week come first.
+    planned_shipments = list(
+        shipping.prefetch_shipments(
+            Shipment.objects.filter(status=Shipment.Status.PLANNED, ship_date__range=(monday, sunday))
+        ).order_by("ship_date", "project__code", "pk")
+    )
+    # Sections due this week that have no planned or shipped shipment at all ("출하 미등록").
+    on_shipment = ShipmentLine.objects.filter(
+        bom_item__section=OuterRef("pk"),
+        truck__shipment__status__in=(Shipment.Status.PLANNED, Shipment.Status.SHIPPED),
+    )
     ship_sections = list(
         Section.objects.filter(is_completed=False)
         .filter(
             Q(confirmed_ship_date__range=(monday, sunday))
             | Q(confirmed_ship_date__isnull=True, planned_ship_date__range=(monday, sunday))
         )
+        .filter(~Exists(on_shipment))
         .select_related("project", "floor")
     )
     for s in ship_sections:
         s.ship_date = s.confirmed_ship_date or s.planned_ship_date
         s.ship_confirmed = s.confirmed_ship_date is not None
     ship_sections.sort(key=lambda s: (s.ship_date, s.project.code, s.name))
+    month_start, month_end = month_range(today)
 
     late_qs = late_activities_qs(today)
     late_total = late_qs.count()
@@ -147,7 +167,11 @@ def dashboard(today):
         "sunday": sunday,
         "active_count": Project.objects.filter(status=Project.Status.ACTIVE).count(),
         "ordered_count": Project.objects.filter(status=Project.Status.ORDERED).count(),
+        "planned_shipments": planned_shipments,
+        "week_total": len(planned_shipments) + len(ship_sections),
         "ship_sections": ship_sections,
+        "month_start": month_start,
+        "month_totals": reports.period_totals(month_start, month_end),
         "late": late,
         "late_total": late_total,
         "recent_logs": list(AuditLog.objects.select_related("user").order_by("-at", "-id")[:10]),

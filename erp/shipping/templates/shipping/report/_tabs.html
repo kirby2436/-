@@ -1,0 +1,3 @@
+<nav class="chip-row" aria-label="출고 실적 보기">
+  {% for key, label, url in tabs %}<a class="chip{% if key == active_tab %} active{% endif %}" href="{{ url }}"{% if key == active_tab %} aria-current="true"{% endif %}>{{ label }}</a>{% endfor %}
+</nav>

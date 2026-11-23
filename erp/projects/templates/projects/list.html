@@ -3,20 +3,31 @@
 {% block extra_head %}{% include "projects/_head.html" %}{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1>프로젝트</h1>
+  <div class="page-title"><h1>프로젝트 관리</h1><p class="page-sub">프로젝트를 등록하고 구간·BOM·출하까지 한곳에서 따라갑니다.</p></div>
   <div class="actions"><a class="btn btn-primary" href="{% url 'projects:create' %}">+ 프로젝트 등록</a></div>
 </div>
-<form class="filter-bar" method="get" role="search">
-  <div class="field"><label for="f-q">검색(코드·이름)</label><input type="search" id="f-q" name="q" value="{{ q }}"></div>
-  <div class="field"><label for="f-status">상태</label>
-    <select id="f-status" name="status"><option value="">전체</option>{% for v, l in statuses %}<option value="{{ v }}"{% if v == status %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
-  <div class="field"><label for="f-type">구분</label>
-    <select id="f-type" name="type"><option value="">전체</option>{% for t in types %}<option value="{{ t.pk }}"{% if t.pk|stringformat:"s" == ptype %} selected{% endif %}>{{ t.name }}</option>{% endfor %}</select></div>
+<div class="stat-grid" aria-label="프로젝트 요약">
+  <div class="stat-card tone-plain"><div class="stat-label">전체 프로젝트</div><div class="stat-value" id="stat-total">{{ stats.total }}<small>건</small></div><div class="stat-desc">등록된 전체 프로젝트</div><span class="stat-icon">{% include "core/_icon.html" with name="folder" %}</span></div>
+  <div class="stat-card tone-blue"><div class="stat-label">진행 중</div><div class="stat-value" id="stat-active">{{ stats.active }}<small>건</small></div><div class="stat-desc">진행 상태인 프로젝트</div><span class="stat-icon">{% include "core/_icon.html" with name="play" %}</span></div>
+  <div class="stat-card tone-sun"><div class="stat-label">담당자 미지정</div><div class="stat-value" id="stat-no-manager">{{ stats.no_manager }}<small>건</small></div><div class="stat-desc">담당자 지정이 필요한 프로젝트</div><span class="stat-icon">{% include "core/_icon.html" with name="user" %}</span></div>
+  <div class="stat-card tone-slate"><div class="stat-label">수주금액 합계</div><div class="stat-value" id="stat-amount">{{ stats.amount_text }}<small>{{ stats.amount_unit }}</small></div><div class="stat-desc">전체 프로젝트 수주금액</div><span class="stat-icon">{% include "core/_icon.html" with name="won" %}</span></div>
+</div>
+<form class="filter-bar chip-section" method="get" role="search" aria-label="프로젝트 검색">
+  <div class="field filter-full">
+    <label class="sr-only" for="f-q">프로젝트 검색(코드·이름)</label>
+    <div class="search-input">{% include "core/_icon.html" with name="search" %}<input type="search" id="f-q" name="q" value="{{ q }}" placeholder="프로젝트 코드나 이름으로 검색"></div>
+  </div>
+  {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+  {% if ptype %}<input type="hidden" name="type" value="{{ ptype }}">{% endif %}
   <div class="field"><label for="f-customer">매출처</label>
     <select id="f-customer" name="customer"><option value="">전체</option>{% for c in customers %}<option value="{{ c.pk }}"{% if c.pk|stringformat:"s" == customer %} selected{% endif %}>{{ c.name }}</option>{% endfor %}</select></div>
   <div class="filter-actions"><button type="submit" class="btn btn-primary">검색</button><a class="btn" href="{% url 'projects:list' %}">초기화</a></div>
+  <div class="filter-full">
+    <div class="chip-row" role="group" aria-label="프로젝트구분별">{% for c in type_chips %}<a class="chip{% if c.active %} active{% endif %}" href="{{ c.url }}"{% if c.active %} aria-current="true"{% endif %}>{{ c.label }} <span class="chip-count">{{ c.count }}</span></a>{% endfor %}</div>
+    <div class="chip-row" role="group" aria-label="상태별">{% for c in status_chips %}<a class="chip{% if c.active %} active{% endif %}" href="{{ c.url }}"{% if c.active %} aria-current="true"{% endif %}>{{ c.label }} <span class="chip-count">{{ c.count }}</span></a>{% endfor %}</div>
+  </div>
 </form>
-<p class="muted small">총 {{ page.paginator.count }}건</p>
+<p class="muted small">조건에 맞는 프로젝트 총 {{ page.paginator.count }}건</p>
 {% if page.object_list %}
 <div class="only-desktop"><div class="table-wrap"><table class="table">
   <thead><tr><th>코드</th><th>프로젝트명</th><th>구분</th><th>상태</th><th>매출처</th><th>원청</th><th>기간</th><th class="num">수주금액</th><th class="num">구간 수</th></tr></thead>

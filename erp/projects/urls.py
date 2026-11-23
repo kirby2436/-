@@ -11,6 +11,7 @@ urlpatterns = [
     path("quick-add/floor/", views.quick_add_floor, name="quick_floor"),
     path("<int:pk>/", views.project_detail, name="detail"),
     path("<int:pk>/edit/", views.project_edit, name="edit"),
+    path("<int:pk>/site-profile/", views.site_profile, name="site_profile"),
     path("<int:pk>/order-items/", views.order_items_edit, name="order_items"),
     path("<int:pk>/prices/", views.prices_edit, name="prices"),
     path("<int:pk>/sections/", views.sections_edit, name="sections"),

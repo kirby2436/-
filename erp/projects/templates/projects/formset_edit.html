@@ -13,6 +13,7 @@
     <span class="small muted">층·외주제작처가 목록에 없으면 바로 추가할 수 있습니다.</span>
     <button type="button" class="btn btn-sm" data-quick-open="floor">층 새로 추가</button>
     <button type="button" class="btn btn-sm" data-quick-open="fabricator">외주제작처 새로 추가</button>
+    <a class="btn btn-sm" href="{% url 'shipping:plant_list' %}">제작장 관리</a>
   </div>
   {% endif %}
   {% if kind == 'order' %}<p class="muted small">단가는 금액 ÷ 수량으로 자동 계산됩니다.</p>{% endif %}
@@ -29,4 +30,4 @@
 </form>
 {% if kind == 'section' %}{% include "projects/_quick_dialog.html" %}{% endif %}
 {% endblock %}
-{% block extra_js %}{% load static %}<script src="{% static 'projects/projects.js' %}"></script>{% endblock %}
+{% block extra_js %}{% load static %}<script src="{% static 'projects/projects.js' %}?v=2"></script>{% endblock %}

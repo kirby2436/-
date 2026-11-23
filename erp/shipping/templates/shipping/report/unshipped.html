@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}미출고 부재{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'shipping/report.css' %}?v=2">{% endblock %}
+{% block content %}
+<div class="page-header"><div class="page-title"><h1>미출고 부재</h1><p class="page-sub">아직 출하하지 않은 부재가 남은 구간입니다.</p></div></div>
+<form method="get" class="filter-bar" aria-label="미출고 필터">
+  <div class="field{% if form.project.errors %} has-error{% endif %}">{{ form.project.label_tag }}{{ form.project }}{% for e in form.project.errors %}<div class="field-error">{{ e }}</div>{% endfor %}</div>
+  <div class="field"><label for="id_overdue_only">{{ form.overdue_only }} 출고예정일 지난 것만</label></div>
+  <div class="filter-actions"><button class="btn btn-primary" type="submit">조회</button> <a class="btn" href="{% url 'shipping:unshipped' %}">초기화</a></div>
+</form>
+{% if invalid %}<p class="field-error">입력값에 오류가 있어 전체 조건으로 조회했습니다.</p>{% endif %}
+<p class="note-box"><strong>남은 수량</strong>은 BOM 수량에서 예정 출하와 출하 완료에 담은 수량을 뺀 값입니다(취소 제외). <strong>출하 수량</strong>은 출하가 확정된 것만 셉니다. 그래서 예정 출하가 있으면 BOM 수량에서 출하 수량을 뺀 값과 남은 수량이 다를 수 있습니다.</p>
+<p class="muted" id="result-count">미출고 구간 {{ rows|length }}개</p>
+
+{% if rows %}
+<div class="only-desktop"><div class="table-wrap"><table class="table">
+  <thead><tr><th>프로젝트</th><th>층·구간</th><th>출고예정일</th><th class="num">BOM 수량</th><th class="num">출하 수량</th><th class="num">남은 수량</th><th class="num">남은 면적(㎡)</th><th class="num">예정 출하 수량</th><th></th></tr></thead>
+  <tbody>{% for r in rows %}
+    <tr><td><a href="{% url 'projects:detail' r.project.pk %}">{{ r.project.code }} {{ r.project.name }}</a></td>
+      <td>{% if r.section.floor %}{{ r.section.floor }} {% endif %}{{ r.section.name }}</td>
+      <td class="nowrap">{{ r.due|date:"Y-m-d" }}{% if r.due_confirmed %} <span class="badge badge-done">확정</span>{% endif %}
+        {% if r.overdue %}<br><span class="badge badge-late">! 지연 {{ r.days_late }}일</span>{% endif %}</td>
+      <td class="num">{{ r.bom_qty }}</td><td class="num">{{ r.shipped_qty }}</td><td class="num"><strong>{{ r.remaining_qty }}</strong></td>
+      <td class="num">{{ r.remaining_area|floatformat:2 }}{% if r.area_missing %}<br><span class="small muted">면적 미계산 {{ r.area_missing }}건</span>{% endif %}</td>
+      <td class="num">{{ r.planned_qty }}</td>
+      <td class="nowrap"><a class="btn btn-sm" href="{{ create_url }}?project={{ r.project.pk }}">출하 등록</a></td></tr>
+    <tr><td colspan="9"><details class="rem"><summary>남은 부재 {{ r.items|length }}건 보기</summary>
+      <div class="table-wrap"><table class="table table-compact"><thead><tr><th>Ass Mark</th><th>Profile</th><th class="num">길이(mm)</th><th class="num">남은 수량</th></tr></thead>
+        <tbody>{% for it in r.items %}<tr><td>{{ it.ass_mark }}</td><td>{{ it.profile_text }}</td><td class="num">{{ it.length_mm|floatformat:"-2g" }}</td><td class="num">{{ it.remaining }}</td></tr>{% endfor %}</tbody></table></div>
+    </details></td></tr>{% endfor %}
+  </tbody></table></div></div>
+<div class="only-mobile"><ul class="card-list">{% for r in rows %}
+  <li class="card-item">
+    <div class="card-item-title">{% if r.section.floor %}{{ r.section.floor }} {% endif %}{{ r.section.name }}</div>
+    <div class="card-item-meta"><a href="{% url 'projects:detail' r.project.pk %}">{{ r.project.code }} {{ r.project.name }}</a></div>
+    <dl class="kv"><dt>출고예정일</dt><dd>{{ r.due|date:"Y-m-d" }}{% if r.due_confirmed %} <span class="badge badge-done">확정</span>{% endif %}{% if r.overdue %} <span class="badge badge-late">! 지연 {{ r.days_late }}일</span>{% endif %}</dd>
+      <dt>BOM 수량</dt><dd>{{ r.bom_qty }}</dd><dt>출하 수량</dt><dd>{{ r.shipped_qty }}</dd>
+      <dt>남은 수량</dt><dd><strong>{{ r.remaining_qty }}</strong></dd>
+      <dt>남은 면적</dt><dd>{{ r.remaining_area|floatformat:2 }}㎡{% if r.area_missing %} <span class="small muted">(면적 미계산 {{ r.area_missing }}건)</span>{% endif %}</dd>
+      <dt>예정 출하</dt><dd>{{ r.planned_qty }}</dd></dl>
+    <details class="rem" style="margin-top:.5rem"><summary>남은 부재 {{ r.items|length }}건 보기</summary>
+      <ul class="card-list">{% for it in r.items %}<li class="unshipped-item">{{ it.ass_mark }} · {{ it.profile_text }} · {{ it.length_mm|floatformat:"-2g" }}mm · 남은 {{ it.remaining }}</li>{% endfor %}</ul></details>
+    <p style="margin:.5rem 0 0"><a class="btn btn-sm" href="{{ create_url }}?project={{ r.project.pk }}">출하 등록</a></p>
+  </li>{% endfor %}</ul></div>
+{% else %}
+<div class="card"><p class="muted">미출고 부재가 없습니다. BOM을 올린 구간의 부재가 모두 출하되었거나 아직 BOM이 없습니다.</p></div>
+{% endif %}
+{% endblock %}

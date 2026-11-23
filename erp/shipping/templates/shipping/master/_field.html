@@ -1,0 +1,6 @@
+<div class="field{% if field.errors %} has-error{% endif %}{% if field.field.widget.input_type == 'checkbox' %} field-check{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+  {% if quick_url %}<div class="input-with-btn">{{ field }}<a class="btn btn-sm" href="{{ quick_url }}?next={{ request.get_full_path|urlencode:'' }}">새로 추가</a></div>{% else %}{{ field }}{% endif %}
+  {% for e in field.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+  {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+</div>

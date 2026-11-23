@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -6,10 +8,11 @@ from django.db.models.functions import Coalesce
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
-from core.models import BomItem, BomUpload, FormedPart, ProductComponent, Section
-from core.services import audit
+from core.models import BomItem, BomUpload, FormedPart, ProductComponent, Section, ShipmentLine
+from core.services import area, audit, shipping
 
 from . import services
+from .forms import ItemSpecForm
 
 PAGE_SIZE = 100
 INDEX_PAGE_SIZE = 30
@@ -52,14 +55,29 @@ def index(request):
 @login_required
 def section_bom(request, pk):
     section = _section(pk)
-    items_qs = (
+    items_qs = shipping.annotate_remaining(
         BomItem.objects.filter(section=section)
         .select_related("product")
-        .annotate(configured=Exists(ProductComponent.objects.filter(product=OuterRef("product_id"))))
+        .annotate(
+            configured=Exists(ProductComponent.objects.filter(product=OuterRef("product_id"))),
+            in_shipment=Exists(ShipmentLine.objects.filter(bom_item=OuterRef("pk"))),
+        )
         .order_by("id")
     )
     totals = BomItem.objects.filter(section=section).aggregate(rows=Count("pk"), qty=Coalesce(Sum("quantity"), 0))
+    total_area = Decimal("0")
+    unknown_area = 0
+    for unit, qty in BomItem.objects.filter(section=section).values_list("unit_area", "quantity"):
+        line = area.line_area(unit, qty)
+        if line is None:
+            unknown_area += 1
+        else:
+            total_area += line
+    totals["area"] = total_area
+    totals["unknown_area"] = unknown_area
     page = Paginator(items_qs, PAGE_SIZE).get_page(request.GET.get("page"))
+    for it in page:
+        it.line_area = area.line_area(it.unit_area, it.quantity)
     req_rows, excluded = services.summarize_requirements(section)
     uploads = BomUpload.objects.filter(section=section).select_related("created_by")[:10]
     return render(
@@ -74,6 +92,10 @@ def section_bom(request, pk):
             "uploads": uploads,
         },
     )
+
+
+def _has_shipment_lines(section):
+    return ShipmentLine.objects.filter(bom_item__section=section).exists()
 
 
 def _render_upload_form(request, section, **extra):
@@ -93,6 +115,9 @@ def _render_preview(request, section, token, filename, rows, mode, error=None):
     else:
         shown, truncated = rows, False
     existing_count = existing.count()
+    locked = _has_shipment_lines(section)
+    if locked:
+        mode = services.MODE_APPEND
     return render(
         request,
         "bom/preview.html",
@@ -106,6 +131,7 @@ def _render_preview(request, section, token, filename, rows, mode, error=None):
             "error_rows": error_rows,
             "warn_rows": warn_rows,
             "existing_count": existing_count,
+            "replace_locked": locked,
             "mode": mode or (services.MODE_APPEND if existing_count else services.MODE_REPLACE),
             "error": error,
         },
@@ -130,6 +156,8 @@ def upload(request, pk):
         existing = BomItem.objects.filter(section=section).count()
         if mode not in (services.MODE_REPLACE, services.MODE_APPEND):
             error = "등록 방식을 선택하세요."
+        elif mode == services.MODE_REPLACE and _has_shipment_lines(section):
+            error = services.REPLACE_LOCKED_MESSAGE
         elif any(r["errors"] for r in rows):
             error = "오류가 있는 행이 있어 저장할 수 없습니다. 파일을 고쳐 다시 올려 주세요."
         elif mode == services.MODE_REPLACE and existing and request.POST.get("confirm_replace") != "on":
@@ -220,9 +248,43 @@ def resolve(request, pk):
 def item_delete(request, pk):
     item = get_object_or_404(BomItem.objects.select_related("section"), pk=pk)
     section_pk = item.section_id
-    services.delete_item(item, request.user)
-    messages.success(request, "BOM 행을 삭제했습니다.")
+    try:
+        services.delete_item(item, request.user)
+    except services.BomParseError as exc:
+        messages.error(request, str(exc))
+    else:
+        messages.success(request, "BOM 행을 삭제했습니다.")
     return redirect("bom:section", pk=section_pk)
+
+
+@login_required
+def item_spec(request, pk):
+    item = get_object_or_404(BomItem.objects.select_related("section", "section__project", "section__floor"), pk=pk)
+    parsed = area.parse_profile(item.profile_text) is not None
+    form = ItemSpecForm(request.POST or None, instance=item, widths_locked=parsed)
+    if request.method == "POST" and form.is_valid():
+        fields = ("bottom_width", "side1_width", "side2_width", "member_kind", "unit_area")
+        before = {f: getattr(item, f) for f in fields}
+        obj = form.save(commit=False)
+        obj.updated_by = request.user
+        obj.save()  # no update_fields: the pre_save signal recalculates unit_area from the widths
+        changes = {}
+        for f in fields:
+            old, new = before[f], getattr(obj, f)
+            if old != new:
+                changes[f] = [None if old is None else str(old), None if new is None else str(new)]
+        if changes:
+            audit.log(request.user, "update", obj, changes)
+            messages.success(request, "규격 정보를 저장했습니다.")
+        else:
+            messages.info(request, "변경된 내용이 없습니다.")
+        return redirect("bom:section", pk=item.section_id)
+    return render(
+        request,
+        "bom/item_spec.html",
+        {"item": item, "section": item.section, "form": form, "parsed": parsed,
+         "profile_widths": area.parse_profile(item.profile_text)},
+    )
 
 
 @login_required

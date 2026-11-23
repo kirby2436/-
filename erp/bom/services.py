@@ -5,6 +5,7 @@ from decimal import Decimal, InvalidOperation
 
 from django.core import signing
 from django.db import transaction
+from django.db.models import ProtectedError
 from django.db.models import Exists, OuterRef
 from django.utils import timezone
 
@@ -15,8 +16,9 @@ from core.models import (
     Product,
     ProductComponent,
     SectionActivity,
+    ShipmentLine,
 )
-from core.services import audit
+from core.services import area, audit
 from core.services.schedule import set_actual, sync_section_activities
 
 MAX_ROWS = 5000
@@ -298,6 +300,14 @@ def _p100(section):
     return sa
 
 
+REPLACE_LOCKED_MESSAGE = "출하에 담긴 부재가 있어 추가 등록만 할 수 있습니다."
+ITEM_LOCKED_MESSAGE = "출하에 담긴 부재라 삭제할 수 없습니다. 출하 기록(취소 포함)이 있는 부재는 지울 수 없습니다."
+
+
+def section_has_shipment_lines(section):
+    return ShipmentLine.objects.filter(bom_item__section=section).exists()
+
+
 @transaction.atomic
 def save_upload(section, rows, filename, mode, user, today=None):
     """Save validated rows. Returns dict(created, deleted, upload, unlinked)."""
@@ -312,8 +322,13 @@ def save_upload(section, rows, filename, mode, user, today=None):
 
     deleted = 0
     if mode == MODE_REPLACE:
+        if section_has_shipment_lines(section):
+            raise BomParseError(REPLACE_LOCKED_MESSAGE)
         deleted = BomItem.objects.filter(section=section).count()
-        BomItem.objects.filter(section=section).delete()
+        try:
+            BomItem.objects.filter(section=section).delete()
+        except ProtectedError as exc:
+            raise BomParseError(REPLACE_LOCKED_MESSAGE) from exc
 
     upload = BomUpload.objects.create(
         section=section,
@@ -341,6 +356,7 @@ def save_upload(section, rows, filename, mode, user, today=None):
         )
         for r in rows
     ]
+    area.fill_bom_items(items)  # bulk_create sends no pre_save signal
     BomItem.objects.bulk_create(items)
     unlinked = sum(1 for i in items if i.product is None)
 
@@ -367,13 +383,18 @@ def save_upload(section, rows, filename, mode, user, today=None):
 @transaction.atomic
 def delete_item(item, user):
     section = item.section
+    if item.shipment_lines.exists():
+        raise BomParseError(ITEM_LOCKED_MESSAGE)
     audit.log(
         user,
         "delete",
         item,
         {"section": section.pk, "ass_mark": item.ass_mark, "profile": item.profile_text, "qty": item.quantity},
     )
-    item.delete()
+    try:
+        item.delete()
+    except ProtectedError as exc:
+        raise BomParseError(ITEM_LOCKED_MESSAGE) from exc
     if not BomItem.objects.filter(section=section).exists():
         sa = _p100(section)
         if sa is not None and sa.actual_date is not None:

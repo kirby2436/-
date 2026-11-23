@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}출하{% endblock %}
+{% block extra_head %}{% include "shipping/master/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title"><h1>출하</h1><p class="page-sub">출하를 등록하고 상차를 편성한 뒤 거래명세서를 인쇄합니다.</p></div>
+  <div class="actions"><a class="btn btn-primary" href="{% url 'shipping:create' %}">+ 출하 등록</a></div>
+</div>
+<div class="stat-grid" aria-label="출하 요약">
+  <div class="stat-card tone-plain"><div class="stat-label">{{ stats.month }}월 출하</div><div class="stat-value" id="stat-shipments">{{ stats.shipments }}<small>건</small></div><div class="stat-desc">이번 달 출하 완료 건수</div><span class="stat-icon">{% include "core/_icon.html" with name="truck" %}</span></div>
+  <div class="stat-card tone-blue"><div class="stat-label">{{ stats.month }}월 차량</div><div class="stat-value" id="stat-trucks">{{ stats.trucks }}<small>대</small></div><div class="stat-desc">이번 달 출하 차량 대수</div><span class="stat-icon">{% include "core/_icon.html" with name="van" %}</span></div>
+  <div class="stat-card tone-slate"><div class="stat-label">{{ stats.month }}월 면적</div><div class="stat-value" id="stat-area">{{ stats.area|floatformat:"-1g" }}<small>㎡</small></div><div class="stat-desc">이번 달 출하 면적 합계</div><span class="stat-icon">{% include "core/_icon.html" with name="area" %}</span></div>
+  <div class="stat-card tone-sun"><div class="stat-label">예정 출하</div><div class="stat-value" id="stat-planned">{{ stats.planned }}<small>건</small></div><div class="stat-desc">아직 출하 전인 예정 건수</div><span class="stat-icon">{% include "core/_icon.html" with name="calendar" %}</span></div>
+</div>
+<form class="filter-bar" method="get" role="search" aria-label="출하 검색">
+  <div class="field"><label for="f-from">출하일 시작</label><input type="date" id="f-from" name="from" value="{{ date_from }}"></div>
+  <div class="field"><label for="f-to">출하일 종료</label><input type="date" id="f-to" name="to" value="{{ date_to }}"></div>
+  <div class="field"><label for="f-project">프로젝트</label>
+    <select id="f-project" name="project"><option value="">전체</option>{% for p in projects %}<option value="{{ p.pk }}"{% if p.pk|stringformat:"s" == project %} selected{% endif %}>{{ p.code }} {{ p.name }}</option>{% endfor %}</select></div>
+  <div class="field"><label for="f-plant">제작장</label>
+    <select id="f-plant" name="plant"><option value="">전체</option>{% for p in plants %}<option value="{{ p.pk }}"{% if p.pk|stringformat:"s" == plant %} selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+  {% if status %}<input type="hidden" name="status" value="{{ status }}">{% endif %}
+  <div class="filter-actions"><button type="submit" class="btn btn-primary">검색</button><a class="btn" href="{% url 'shipping:list' %}">초기화</a></div>
+  <div class="filter-full"><div class="chip-row" role="group" aria-label="상태별">{% for c in status_chips %}<a class="chip{% if c.active %} active{% endif %}" href="{{ c.url }}"{% if c.active %} aria-current="true"{% endif %}>{{ c.label }} <span class="chip-count">{{ c.count }}</span></a>{% endfor %}</div></div>
+</form>
+<p class="muted small">총 {{ page.paginator.count }}건</p>
+{% if page.object_list %}
+<div class="only-desktop"><div class="table-wrap"><table class="table">
+  <thead><tr><th>출하일</th><th>프로젝트</th><th>구간</th><th>제작장</th><th class="num">차량</th><th class="num">부재</th><th class="num">면적(㎡)</th><th>상태</th></tr></thead>
+  <tbody>
+  {% for s in page %}
+  <tr>
+    <td class="nowrap"><a href="{% url 'shipping:detail' pk=s.pk %}">{{ s.ship_date|date:"Y-m-d" }}</a></td>
+    <td>{{ s.project.name }}<div class="muted small title-line">{{ s.title }}</div></td>
+    <td>{{ s.section_label|default:"-" }}</td>
+    <td>{{ s.plant.name|default:"-" }}</td>
+    <td class="num">{{ s.truck_count }}대</td>
+    <td class="num">{{ s.piece_count }}</td>
+    <td class="num">{{ s.total_area|floatformat:"2g" }}</td>
+    <td>{% include "shipping/shipment/_status.html" with s=s %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+<div class="only-mobile"><ul class="card-list">
+  {% for s in page %}
+  <li class="card-item">
+    <div class="card-item-title"><a href="{% url 'shipping:detail' pk=s.pk %}">{{ s.title }}</a></div>
+    <div class="card-item-meta">{{ s.ship_date|date:"Y-m-d" }} · {% include "shipping/shipment/_status.html" with s=s %}</div>
+    <dl class="kv">
+      <dt>프로젝트</dt><dd>{{ s.project.name }}</dd>
+      <dt>구간</dt><dd>{{ s.section_label|default:"-" }}</dd>
+      <dt>제작장</dt><dd>{{ s.plant.name|default:"-" }}</dd>
+      <dt>차량</dt><dd>{{ s.truck_count }}대</dd>
+      <dt>부재</dt><dd>{{ s.piece_count }}</dd>
+      <dt>면적</dt><dd>{{ s.total_area|floatformat:"2g" }}㎡</dd>
+    </dl>
+  </li>
+  {% endfor %}
+</ul></div>
+{% if page.has_other_pages %}
+<nav class="pagination" aria-label="페이지">
+  {% if page.has_previous %}<a href="?{% if qs %}{{ qs }}&amp;{% endif %}page={{ page.previous_page_number }}">이전</a>{% else %}<span class="disabled">이전</span>{% endif %}
+  <span class="current">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{% if qs %}{{ qs }}&amp;{% endif %}page={{ page.next_page_number }}">다음</a>{% else %}<span class="disabled">다음</span>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+<div class="card"><p class="muted">조건에 맞는 출하가 없습니다.</p></div>
+{% endif %}
+{% endblock %}

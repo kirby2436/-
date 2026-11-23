@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}BOM 미리보기{% endblock %}
-{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}">{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}?v=2">{% endblock %}
 {% block content %}
 <div class="page-header">
   <div><h1>BOM 미리보기</h1><p class="muted small">{{ section.project.code }} {{ section.project.name }} / {{ section.name }}{% if filename %} / {{ filename }}{% endif %}</p></div>
@@ -41,8 +41,9 @@
   <h2>등록 방식</h2>
   <div class="bom-mode">
     <label><input type="radio" name="mode" value="append" {% if mode != "replace" %}checked{% endif %}> 추가 등록 (기존 BOM {{ existing_count }}건 유지)</label>
-    <label><input type="radio" name="mode" value="replace" {% if mode == "replace" %}checked{% endif %}> 새로 등록 (기존 BOM 모두 삭제 후 등록)</label>
+    <label><input type="radio" name="mode" value="replace" {% if mode == "replace" %}checked{% endif %}{% if replace_locked %} disabled{% endif %}> 새로 등록 (기존 BOM 모두 삭제 후 등록)</label>
   </div>
+  {% if replace_locked %}<p class="message message-warning">출하에 담긴 부재가 있어 추가 등록만 할 수 있습니다.</p>{% endif %}
   <div id="replace-confirm" {% if mode != "replace" %}hidden{% endif %}>
     {% if existing_count %}
     <p class="message message-warning">기존 BOM {{ existing_count }}건이 모두 삭제됩니다.</p>
@@ -53,4 +54,4 @@
 </form>
 {% endif %}
 {% endblock %}
-{% block extra_js %}<script src="{% static 'bom/bom.js' %}"></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'bom/bom.js' %}?v=2"></script>{% endblock %}

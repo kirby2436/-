@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}누락 품목 정리{% endblock %}
-{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}">{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}?v=2">{% endblock %}
 {% block content %}
 <div class="page-header">
   <div><h1>누락 품목 정리</h1><p class="muted small">{{ section.project.code }} {{ section.project.name }} / {{ section.name }}</p></div>

@@ -1,25 +1,51 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}홈{% endblock %}
-{% block extra_head %}<link rel="stylesheet" href="{% static 'schedule/schedule.css' %}">{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'schedule/schedule.css' %}?v=2">{% endblock %}
 {% block content %}
-<div class="page-header"><h1>홈</h1>
+<div class="page-header">
+  <div class="page-title"><h1>홈</h1><p class="page-sub">오늘 {{ today|date:"n월 j일 (D)" }} 기준으로 진행 상황과 이번 주 출고 예정을 한눈에 봅니다.</p></div>
   <div class="actions"><a class="btn" href="{% url 'schedule:board' %}">진행현황판</a></div></div>
 <div class="stack">
   <div class="stat-grid">
-    <div class="card"><div class="muted small">진행 중 프로젝트</div><div class="stat" id="stat-active">{{ active_count }}</div></div>
-    <div class="card"><div class="muted small">수주 프로젝트</div><div class="stat" id="stat-ordered">{{ ordered_count }}</div></div>
-    <div class="card"><div class="muted small">이번 주 출고 예정 구간</div><div class="stat">{{ ship_sections|length }}</div></div>
-    <div class="card"><div class="muted small">지연 Activity</div><div class="stat">{{ late_total }}</div></div>
+    <div class="stat-card tone-plain"><div class="stat-label">진행 중 프로젝트</div><div class="stat-value" id="stat-active">{{ active_count }}<small>건</small></div><div class="stat-desc">진행 상태인 프로젝트</div><span class="stat-icon">{% include "core/_icon.html" with name="play" %}</span></div>
+    <div class="stat-card tone-blue"><div class="stat-label">수주 프로젝트</div><div class="stat-value" id="stat-ordered">{{ ordered_count }}<small>건</small></div><div class="stat-desc">수주 후 착수 전인 프로젝트</div><span class="stat-icon">{% include "core/_icon.html" with name="folder" %}</span></div>
+    <div class="stat-card tone-slate"><div class="stat-label">이번 주 출고 예정</div><div class="stat-value" id="stat-week">{{ week_total }}<small>건</small></div><div class="stat-desc">{{ monday|date:"n/j" }} ~ {{ sunday|date:"n/j" }} 출하와 구간</div><span class="stat-icon">{% include "core/_icon.html" with name="truck" %}</span></div>
+    <div class="stat-card tone-sun"><div class="stat-label">지연 Activity</div><div class="stat-value" id="stat-late">{{ late_total }}<small>개</small></div><div class="stat-desc">계획일이 지났는데 실적이 없는 단계</div><span class="stat-icon">{% include "core/_icon.html" with name="alert" %}</span></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><h2>이번 달 출고 실적 ({{ month_start|date:"n월" }})</h2>
+      <a class="small" href="{% url 'shipping:performance' %}">출고 실적 보기</a></div>
+    <p id="month-summary" style="margin:0">출하 <strong>{{ month_totals.shipments }}</strong>건 · 차량 <strong>{{ month_totals.trucks }}</strong>대 · 면적 <strong>{{ month_totals.area|floatformat:2 }}</strong>㎡</p>
   </div>
 
   <div class="card">
     <div class="card-title"><h2>이번 주 출고 예정 ({{ monday|date:"n/j" }} ~ {{ sunday|date:"n/j" }})</h2></div>
+    {% if planned_shipments %}
+    <h3 class="small muted">예정 출하</h3>
+    <div class="only-desktop"><div class="table-wrap"><table class="table">
+      <thead><tr><th>출하일</th><th>프로젝트</th><th>구간</th><th class="num">차량</th><th class="num">면적(㎡)</th><th></th></tr></thead>
+      <tbody>{% for sh in planned_shipments %}
+        <tr><td class="nowrap">{{ sh.ship_date|date:"n/j (D)" }} <span class="badge badge-planned">예정</span></td>
+          <td><a href="{% url 'projects:detail' sh.project.pk %}">{{ sh.project.code }} {{ sh.project.name }}</a></td>
+          <td>{{ sh.section_label|default:"-" }}</td><td class="num">{{ sh.truck_count }}대</td><td class="num">{{ sh.total_area|floatformat:2 }}</td>
+          <td><a href="{% url 'shipping:detail' sh.pk %}">출하 상세</a></td></tr>{% endfor %}
+      </tbody></table></div></div>
+    <div class="only-mobile"><ul class="card-list">{% for sh in planned_shipments %}
+      <li class="card-item">
+        <div class="card-item-title"><a href="{% url 'shipping:detail' sh.pk %}">{{ sh.ship_date|date:"n/j (D)" }} {{ sh.section_label|default:"출하" }}</a></div>
+        <div class="card-item-meta"><a href="{% url 'projects:detail' sh.project.pk %}">{{ sh.project.code }} {{ sh.project.name }}</a></div>
+        <dl class="kv"><dt>상태</dt><dd><span class="badge badge-planned">예정</span></dd>
+          <dt>차량</dt><dd>{{ sh.truck_count }}대</dd><dt>면적</dt><dd>{{ sh.total_area|floatformat:2 }}㎡</dd></dl>
+      </li>{% endfor %}</ul></div>
+    {% endif %}
     {% if ship_sections %}
+    <h3 class="small muted"{% if planned_shipments %} style="margin-top:1rem"{% endif %}>출하 미등록 구간</h3>
     <div class="only-desktop"><div class="table-wrap"><table class="table">
       <thead><tr><th>출고일</th><th>프로젝트</th><th>구간</th><th>층</th><th></th></tr></thead>
       <tbody>{% for s in ship_sections %}
-        <tr><td class="nowrap">{{ s.ship_date|date:"n/j (D)" }}{% if s.ship_confirmed %} <span class="badge badge-done">확정</span>{% else %} <span class="badge badge-planned">예정</span>{% endif %}</td>
+        <tr><td class="nowrap">{{ s.ship_date|date:"n/j (D)" }}{% if s.ship_confirmed %} <span class="badge badge-done">확정</span>{% else %} <span class="badge badge-planned">예정</span>{% endif %} <span class="badge badge-warn">출하 미등록</span></td>
           <td><a href="{% url 'projects:detail' s.project.pk %}">{{ s.project.code }} {{ s.project.name }}</a></td>
           <td>{{ s.name }}</td><td>{{ s.floor|default_if_none:"-" }}</td>
           <td><a href="{% url 'schedule:section' s.pk %}">일정 보기</a></td></tr>{% endfor %}
@@ -28,10 +54,11 @@
       <li class="card-item">
         <div class="card-item-title"><a href="{% url 'schedule:section' s.pk %}">{{ s.name }}{% if s.floor %} {{ s.floor }}{% endif %}</a></div>
         <div class="card-item-meta"><a href="{% url 'projects:detail' s.project.pk %}">{{ s.project.code }} {{ s.project.name }}</a></div>
-        <dl class="kv"><dt>출고일</dt><dd>{{ s.ship_date|date:"n/j (D)" }}{% if s.ship_confirmed %} <span class="badge badge-done">확정</span>{% else %} <span class="badge badge-planned">예정</span>{% endif %}</dd></dl>
+        <dl class="kv"><dt>출고일</dt><dd>{{ s.ship_date|date:"n/j (D)" }}{% if s.ship_confirmed %} <span class="badge badge-done">확정</span>{% else %} <span class="badge badge-planned">예정</span>{% endif %} <span class="badge badge-warn">출하 미등록</span></dd></dl>
       </li>{% endfor %}</ul></div>
-    {% else %}
-    <p class="muted">이번 주에 출고 예정인 구간이 없습니다. 프로젝트에 구간을 등록하면 이곳에 표시됩니다. <a href="{% url 'projects:list' %}">프로젝트 목록으로 이동</a></p>
+    {% endif %}
+    {% if not planned_shipments and not ship_sections %}
+    <p class="muted">이번 주에 출고 예정인 출하와 구간이 없습니다. 출하를 등록하거나 프로젝트에 구간을 등록하면 이곳에 표시됩니다. <a href="{% url 'shipping:list' %}">출하 목록으로 이동</a></p>
     {% endif %}
   </div>
 

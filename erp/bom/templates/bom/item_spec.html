@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}규격 수정 - {{ item.ass_mark }}{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}?v=2">{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>규격 수정</h1><p class="muted small">{{ section.project.code }} {{ section.project.name }} / {{ section.name }} / {{ item.ass_mark }} ({{ item.profile_text }}, 길이 {{ item.length_mm|floatformat:"-2" }}mm)</p></div>
+  <div class="actions"><a class="btn" href="{% url 'bom:section' section.pk %}">돌아가기</a></div>
+</div>
+<form method="post" novalidate class="card stack">
+  {% csrf_token %}
+  {% for e in form.non_field_errors %}<div class="message message-error">{{ e }}</div>{% endfor %}
+  {% if parsed %}
+  <p class="message message-warning">Profile({{ item.profile_text }})에서 폭을 읽을 수 있어 폭은 자동으로 정해집니다. 폭을 바꾸려면 Profile을 바꾸세요. 여기서는 보 구분만 고를 수 있습니다.</p>
+  {% else %}
+  <p class="muted small">Profile에서 폭을 읽지 못했습니다. 하판·측판 폭(mm)을 직접 입력하면 면적이 계산됩니다. 측판이 한 장이면 측판2는 0 또는 비워 두세요.</p>
+  {% endif %}
+  <div class="bom-spec-grid">
+    {% for field in form %}
+    <div class="field{% if field.errors %} has-error{% endif %}">
+      <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.disabled %} (자동){% endif %}</label>
+      {{ field }}
+      {% for e in field.errors %}<p class="field-error">{{ e }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <p class="small">현재 면적: {% if item.unit_area is None %}<span class="badge badge-warn">규격 확인 필요</span>{% else %}개당 {{ item.unit_area|floatformat:2 }}㎡{% endif %}</p>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">저장</button>
+    <a class="btn" href="{% url 'bom:section' section.pk %}">취소</a>
+  </div>
+</form>
+{% endblock %}

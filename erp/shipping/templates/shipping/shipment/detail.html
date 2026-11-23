@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}출하 {{ shipment.ship_date|date:"Y-m-d" }} {{ shipment.project.name }}{% endblock %}
+{% block extra_head %}{% include "shipping/master/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>출하 상세</h1>
+  <p class="muted small title-line">{{ shipment.title }}</p></div>
+  <div class="actions">
+    <a class="btn" href="{% url 'shipping:list' %}">목록</a>
+    {% if shipment.status == 'PLANNED' %}
+      <a class="btn" href="{% url 'shipping:edit' pk=shipment.pk %}">기본정보 수정</a>
+      <a class="btn" href="{% url 'shipping:load' pk=shipment.pk %}">상차 편성</a>
+      <a class="btn btn-primary" href="{% url 'shipping:confirm' pk=shipment.pk %}">출하 확정</a>
+      <a class="btn btn-danger" href="{% url 'shipping:cancel' pk=shipment.pk %}">취소</a>
+    {% elif shipment.status == 'SHIPPED' %}
+      <a class="btn" href="{% url 'shipping:statement' pk=shipment.pk %}">거래명세서</a>
+      <a class="btn" href="{% url 'shipping:statement_xlsx' pk=shipment.pk %}">엑셀</a>
+      <a class="btn btn-danger" href="{% url 'shipping:cancel' pk=shipment.pk %}">취소</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if shipment.status == 'CANCELED' %}
+<div class="message message-error">이 출하는 취소되었습니다. 사유: {{ shipment.canceled_reason|default:"-" }}</div>
+{% endif %}
+{% if unknown_area and shipment.status == 'PLANNED' %}
+<div class="message message-warning">면적을 계산하지 못한 부재(규격 확인 필요)가 {{ unknown_area }}건 있습니다. 확정하려면 BOM에서 규격을 먼저 확인해야 합니다.</div>
+{% endif %}
+
+<section class="card">
+  <h2>기본정보</h2>
+  <dl class="kv kv-wide">
+    <dt>상태</dt><dd>{% include "shipping/shipment/_status.html" with s=shipment %}</dd>
+    <dt>프로젝트</dt><dd><a href="{% url 'projects:detail' pk=shipment.project.pk %}">{{ shipment.project.code }} {{ shipment.project.name }}</a></dd>
+    <dt>출하일</dt><dd>{{ shipment.ship_date|date:"Y-m-d" }}</dd>
+    <dt>도착일</dt><dd>{{ shipment.arrival_date|date:"Y-m-d"|default:"-" }}</dd>
+    <dt>제작장</dt><dd>{{ shipment.plant.name|default:"-" }}</dd>
+    <dt>출하 담당</dt><dd>{{ shipment.dispatcher|default:"-" }}</dd>
+    <dt>구간</dt><dd>{{ shipment.section_label|default:"-" }}</dd>
+    <dt>합계</dt><dd><strong>차량 {{ shipment.truck_count }}대 · 부재 {{ shipment.piece_count }}개 · 면적 {{ shipment.total_area|floatformat:"2g" }}㎡</strong></dd>
+    <dt>비고</dt><dd>{{ shipment.note|linebreaksbr|default:"-" }}</dd>
+  </dl>
+</section>
+
+{% for truck in trucks %}
+<section class="card">
+  <div class="card-title">
+    <h2>{{ truck.seq }}호차 <span class="muted small">공급번호 {% if truck.supply_no %}{{ truck.supply_no }}{% else %}확정 때 부여{% endif %}</span></h2>
+    {% if shipment.status != 'CANCELED' %}<a class="btn btn-sm" href="{% url 'shipping:truck_edit' pk=truck.pk %}">운송 정보 수정</a>{% endif %}
+    {% if shipment.status == 'SHIPPED' %}<a class="btn btn-sm" href="{% url 'shipping:statement' pk=shipment.pk %}?truck={{ truck.pk }}">거래명세서</a>{% endif %}
+  </div>
+  {% if truck.warning %}<div class="message message-warning">{{ truck.warning }}</div>{% endif %}
+  <dl class="kv kv-wide">
+    <dt>운송회사</dt><dd>{{ truck.carrier.name|default:"-" }}</dd>
+    <dt>차종</dt><dd>{{ truck.vehicle_type.name|default:"-" }}</dd>
+    <dt>차량번호</dt><dd>{{ truck.plate_no|default:"-" }}</dd>
+    <dt>기사</dt><dd>{{ truck.driver_name|default:"-" }}</dd>
+    <dt>연락처</dt><dd>{{ truck.driver_phone|default:"-" }}</dd>
+    <dt>적재 메모</dt><dd>{{ truck.load_note|default:"-" }}</dd>
+  </dl>
+  {% include "shipping/shipment/_lines_readonly.html" %}
+</section>
+{% empty %}
+<div class="card"><p class="muted">차량이 없습니다.{% if shipment.status == 'PLANNED' %} "상차 편성"에서 차량과 부재를 담으세요.{% endif %}</p></div>
+{% endfor %}
+{% endblock %}

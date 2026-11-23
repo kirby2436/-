@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -170,6 +172,9 @@ class Section(Stamped):
         Partner, verbose_name="외주제작처", null=True, blank=True, on_delete=models.PROTECT, related_name="fabricated_sections"
     )
     fabricator_reviewed_on = models.DateField("외주검토일", null=True, blank=True)
+    plant = models.ForeignKey(
+        "Plant", verbose_name="제작장", null=True, blank=True, on_delete=models.PROTECT, related_name="sections"
+    )
     note = models.TextField("비고", blank=True)
 
     class Meta:
@@ -280,6 +285,10 @@ class BomUpload(Stamped):
 
 
 class BomItem(Stamped):
+    class MemberKind(models.TextChoices):
+        BEAM = "BEAM", "BEAM"
+        GIRDER = "GIRDER", "GIRDER"
+
     section = models.ForeignKey(Section, verbose_name="구간", on_delete=models.CASCADE, related_name="bom_items")
     upload = models.ForeignKey(BomUpload, verbose_name="업로드", null=True, blank=True, on_delete=models.SET_NULL, related_name="items")
     ass_mark = models.CharField("Ass Mark", max_length=100)
@@ -292,6 +301,11 @@ class BomItem(Stamped):
     finish = models.CharField("FINISH", max_length=100, blank=True)
     location = models.CharField("LOCATION", max_length=100, blank=True)
     note = models.CharField("비고", max_length=200, blank=True)
+    bottom_width = models.PositiveIntegerField("하판 폭(mm)", null=True, blank=True)
+    side1_width = models.PositiveIntegerField("측판1 폭(mm)", null=True, blank=True)
+    side2_width = models.PositiveIntegerField("측판2 폭(mm)", null=True, blank=True)
+    unit_area = models.DecimalField("면적(㎡/개)", max_digits=12, decimal_places=2, null=True, blank=True)
+    member_kind = models.CharField("보 구분", max_length=6, choices=MemberKind.choices, blank=True)
 
     class Meta:
         verbose_name = "구간 BOM"
@@ -300,6 +314,19 @@ class BomItem(Stamped):
 
     def __str__(self):
         return f"{self.ass_mark} {self.profile_text}"
+
+    @property
+    def shipped_qty(self):
+        """Quantity on non-canceled shipments (planned ones included)."""
+        if "shipped_total" in self.__dict__:  # annotated by shipping.annotate_remaining
+            return self.__dict__["shipped_total"]
+        from core.services import shipping
+
+        return shipping.shipped_qty(self)
+
+    @property
+    def remaining_qty(self):
+        return self.quantity - self.shipped_qty
 
 
 class ActivityType(Stamped):
@@ -366,3 +393,198 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.at:%Y-%m-%d %H:%M} {self.get_action_display()} {self.object_repr}"
+
+
+class Plant(Stamped):
+    name = models.CharField("제작장", max_length=100, unique=True)
+    site = models.CharField("위치", max_length=100, blank=True)
+    operator = models.ForeignKey(
+        Partner, verbose_name="운영 업체(외주)", null=True, blank=True, on_delete=models.PROTECT, related_name="operated_plants"
+    )
+    is_active = models.BooleanField("사용", default=True)
+    sort_order = models.PositiveIntegerField("정렬", default=0)
+
+    class Meta:
+        verbose_name = "제작장"
+        verbose_name_plural = "제작장"
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def is_outsourced(self):
+        return self.operator_id is not None
+
+
+class Carrier(Stamped):
+    name = models.CharField("운송회사", max_length=100, unique=True)
+    phone = models.CharField("연락처", max_length=30, blank=True)
+    is_active = models.BooleanField("사용", default=True)
+
+    class Meta:
+        verbose_name = "운송회사"
+        verbose_name_plural = "운송회사"
+        ordering = ["name"]
+
+    def __str__(self):
+        return self.name
+
+
+class VehicleType(Stamped):
+    name = models.CharField("차종", max_length=50, unique=True)
+    sort_order = models.PositiveIntegerField("정렬", default=0)
+    is_active = models.BooleanField("사용", default=True)
+
+    class Meta:
+        verbose_name = "차종"
+        verbose_name_plural = "차종"
+        ordering = ["sort_order", "name"]
+
+    def __str__(self):
+        return self.name
+
+
+class SiteProfile(Stamped):
+    project = models.OneToOneField(Project, verbose_name="프로젝트", on_delete=models.CASCADE, related_name="site_profile")
+    address = models.CharField("현장 주소", max_length=200, blank=True)
+    access_note = models.TextField("진입 조건", blank=True)
+    unloading_contact_name = models.CharField("하차 담당자", max_length=50, blank=True)
+    unloading_contact_phone = models.CharField("하차 담당자 연락처", max_length=30, blank=True)
+    has_corner_plate = models.BooleanField("코너 플레이트 있음", default=False)
+    allowed_vehicle_types = models.ManyToManyField(
+        VehicleType, verbose_name="진입 가능 차량", blank=True, related_name="site_profiles"
+    )
+    note = models.TextField("비고", blank=True)
+
+    class Meta:
+        verbose_name = "현장개요"
+        verbose_name_plural = "현장개요"
+
+    def __str__(self):
+        return f"{self.project.code} 현장개요"
+
+
+class Shipment(Stamped):
+    class Status(models.TextChoices):
+        PLANNED = "PLANNED", "예정"
+        SHIPPED = "SHIPPED", "출하"
+        CANCELED = "CANCELED", "취소"
+
+    project = models.ForeignKey(Project, verbose_name="프로젝트", on_delete=models.PROTECT, related_name="shipments")
+    ship_date = models.DateField("출하일")
+    arrival_date = models.DateField("도착일", null=True, blank=True)
+    plant = models.ForeignKey(
+        Plant, verbose_name="제작장", null=True, blank=True, on_delete=models.PROTECT, related_name="shipments"
+    )
+    status = models.CharField("상태", max_length=10, choices=Status.choices, default=Status.PLANNED)
+    dispatcher = models.CharField("출하 담당", max_length=50, blank=True)
+    note = models.TextField("비고", blank=True)
+    canceled_reason = models.CharField("취소 사유", max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "출하"
+        verbose_name_plural = "출하"
+        ordering = ["-ship_date", "-id"]
+
+    def __str__(self):
+        return f"{self.ship_date:%Y-%m-%d} {self.project.name} ({self.get_status_display()})"
+
+    def _all_lines(self):
+        # Uses prefetched data when present: prefetch_related("trucks__lines__bom_item__section__floor").
+        return [line for truck in self.trucks.all() for line in truck.lines.all()]
+
+    @property
+    def truck_count(self):
+        return len(self.trucks.all())
+
+    @property
+    def piece_count(self):
+        return sum(line.quantity for line in self._all_lines())
+
+    @property
+    def total_area(self):
+        return sum((line.effective_area for line in self._all_lines()), Decimal("0"))
+
+    @property
+    def section_label(self):
+        """Floor and section names of all included sections, joined by ', ' in first-use order."""
+        labels = []
+        for line in self._all_lines():
+            sec = line.bom_item.section
+            label = f"{sec.floor.name} {sec.name}" if sec.floor_id else sec.name
+            if label not in labels:
+                labels.append(label)
+        return ", ".join(labels)
+
+    @property
+    def title(self):
+        """One-line title: date, site, floor/section, N대, M부재, area, plant (empty parts skipped)."""
+        parts = [
+            f"{self.ship_date:%Y-%m-%d}",
+            self.project.name,
+            self.section_label,
+            f"{self.truck_count}대",
+            f"{self.piece_count}부재",
+            f"{self.total_area:,.2f}㎡",
+            self.plant.name if self.plant_id else "",
+        ]
+        return " ".join(p for p in parts if p)
+
+
+class ShipmentTruck(Stamped):
+    shipment = models.ForeignKey(Shipment, verbose_name="출하", on_delete=models.CASCADE, related_name="trucks")
+    seq = models.PositiveIntegerField("호차", default=1)
+    supply_no = models.CharField("공급번호", max_length=30, unique=True, null=True, blank=True, editable=False)
+    carrier = models.ForeignKey(
+        Carrier, verbose_name="운송회사", null=True, blank=True, on_delete=models.PROTECT, related_name="trucks"
+    )
+    vehicle_type = models.ForeignKey(
+        VehicleType, verbose_name="차종", null=True, blank=True, on_delete=models.PROTECT, related_name="trucks"
+    )
+    plate_no = models.CharField("차량번호", max_length=30, blank=True)
+    driver_name = models.CharField("기사", max_length=50, blank=True)
+    driver_phone = models.CharField("기사 연락처", max_length=30, blank=True)
+    load_note = models.CharField("상차 메모", max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "출하 차량"
+        verbose_name_plural = "출하 차량"
+        ordering = ["shipment", "seq"]
+        constraints = [models.UniqueConstraint(fields=["shipment", "seq"], name="uniq_shipmenttruck_shipment_seq")]
+
+    def __str__(self):
+        return f"{self.shipment_id}-{self.seq}호차"
+
+    @property
+    def piece_count(self):
+        return sum(line.quantity for line in self.lines.all())
+
+    @property
+    def total_area(self):
+        return sum((line.effective_area for line in self.lines.all()), Decimal("0"))
+
+
+class ShipmentLine(Stamped):
+    truck = models.ForeignKey(ShipmentTruck, verbose_name="차량", on_delete=models.CASCADE, related_name="lines")
+    bom_item = models.ForeignKey(BomItem, verbose_name="BOM 부재", on_delete=models.PROTECT, related_name="shipment_lines")
+    quantity = models.PositiveIntegerField("수량")
+    area = models.DecimalField("면적(㎡)", max_digits=14, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "상차 부재"
+        verbose_name_plural = "상차 부재"
+        ordering = ["truck", "id"]
+        constraints = [models.UniqueConstraint(fields=["truck", "bom_item"], name="uniq_shipmentline_truck_bom_item")]
+
+    def __str__(self):
+        return f"{self.truck} {self.bom_item.ass_mark} x{self.quantity}"
+
+    @property
+    def effective_area(self):
+        """Stored area (set at confirm); for planned lines computed from the BOM item."""
+        if self.area is not None:
+            return self.area
+        from core.services.area import line_area
+
+        return line_area(self.bom_item.unit_area, self.quantity) or Decimal("0")

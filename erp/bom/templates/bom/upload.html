@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}BOM 업로드{% endblock %}
-{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}">{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'bom/bom.css' %}?v=2">{% endblock %}
 {% block content %}
 <div class="page-header">
   <div><h1>BOM 업로드</h1><p class="muted small">{{ section.project.code }} {{ section.project.name }} / {{ section.name }} (현재 {{ existing_count }}건)</p></div>

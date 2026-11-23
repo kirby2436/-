@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}{% if shipment %}출하 기본정보 수정{% else %}출하 등록{% endif %}{% endblock %}
+{% block extra_head %}{% include "shipping/master/_head.html" %}{% endblock %}
+{% block content %}
+{% url 'shipping:plant_create' as plant_add_url %}
+<div class="page-header">
+  <div><h1>{% if shipment %}출하 기본정보 수정{% else %}출하 등록{% endif %}</h1>
+  <p class="muted small">{% if shipment %}{{ shipment.title }}{% else %}저장하면 상차 편성 화면으로 이동합니다.{% endif %}</p></div>
+</div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% for e in form.non_field_errors %}<div class="message message-error">{{ e }}</div>{% endfor %}
+  <div class="card">
+    <div class="form-grid">
+      {% include "shipping/master/_field.html" with field=form.project %}
+      {% include "shipping/master/_field.html" with field=form.ship_date %}
+      {% include "shipping/master/_field.html" with field=form.arrival_date %}
+      {% include "shipping/master/_field.html" with field=form.plant quick_url=plant_add_url %}
+      {% include "shipping/master/_field.html" with field=form.dispatcher %}
+    </div>
+    {% include "shipping/master/_field.html" with field=form.note %}
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">{% if shipment %}저장{% else %}등록하고 상차 편성으로{% endif %}</button>
+    <a class="btn" href="{% if shipment %}{% url 'shipping:detail' pk=shipment.pk %}{% else %}{% url 'shipping:list' %}{% endif %}">취소</a>
+  </div>
+</form>
+{% endblock %}

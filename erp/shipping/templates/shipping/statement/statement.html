@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}거래명세서{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'shipping/statement.css' %}?v=2">{% endblock %}
+{% block content %}
+<div class="st-toolbar">
+  <div class="page-header">
+    <h1>거래명세서</h1>
+    <div class="actions">
+      <button type="button" class="btn btn-primary" id="st-print">인쇄</button>
+      <a class="btn" href="{% url 'shipping:statement_xlsx' shipment.pk %}{% if selected_truck %}?truck={{ selected_truck.pk }}{% endif %}">엑셀</a>
+      <a class="btn" href="{% url 'shipping:detail' shipment.pk %}">출하 상세로</a>
+    </div>
+  </div>
+  <p class="muted small st-meta">{{ shipment.project.name }} · 출하일 {{ shipment.ship_date|date:"Y-m-d" }}</p>
+  {% if trucks %}
+  <form method="get" class="filter-bar st-select">
+    <div class="field">
+      <label for="st-truck">차량 선택</label>
+      <select id="st-truck" name="truck" onchange="this.form.submit()">
+        <option value="">전체 차량 ({{ trucks|length }}대)</option>
+        {% for pk, seq in trucks %}<option value="{{ pk }}"{% if selected_truck.pk == pk %} selected{% endif %}>{{ seq }}호차</option>{% endfor %}
+      </select>
+    </div>
+    <noscript><button type="submit" class="btn btn-sm">보기</button></noscript>
+  </form>
+  {% endif %}
+  <p class="muted small">인쇄 용지는 A4 세로입니다. 차량 1대가 1장이며, 부재가 31행을 넘으면 다음 장으로 이어집니다.</p>
+</div>
+
+{% for st in statements %}
+<div class="st-scroll">
+  {% for page in st.pages %}{% include "shipping/statement/_sheet.html" with notice=st.notice %}{% endfor %}
+</div>
+{% empty %}
+<div class="card"><p class="muted">이 출하에는 차량이 없습니다. 출하 상세에서 차량과 부재를 먼저 등록하세요.</p></div>
+{% endfor %}
+{% endblock %}
+{% block extra_js %}
+<script>
+  document.getElementById("st-print").addEventListener("click", function () { window.print(); });
+</script>
+{% endblock %}

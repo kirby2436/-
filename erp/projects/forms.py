@@ -2,7 +2,9 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.forms import BaseInlineFormSet, inlineformset_factory
 
-from core.models import Floor, ItemPrice, OrderItem, Partner, Project, ProjectType, Section, SectionFile
+from core.models import (
+    Floor, ItemPrice, OrderItem, Partner, Plant, Project, ProjectType, Section, SectionFile, SiteProfile, VehicleType,
+)
 
 User = get_user_model()
 
@@ -98,7 +100,7 @@ class SectionForm(forms.ModelForm):
         model = Section
         fields = [
             "name", "floor", "planned_ship_date", "confirmed_ship_date", "is_completed",
-            "make_type", "fabricator", "fabricator_reviewed_on", "note",
+            "make_type", "plant", "fabricator", "fabricator_reviewed_on", "note",
         ]
         widgets = {"note": forms.TextInput()}
 
@@ -113,6 +115,10 @@ class SectionForm(forms.ModelForm):
             pk=inst.fabricator_id or 0
         )
         self.fields["fabricator"].widget.attrs["data-quick"] = "fabricator"
+        self.fields["plant"].empty_label = "선택 안 함"
+        self.fields["plant"].queryset = Plant.objects.filter(is_active=True) | Plant.objects.filter(
+            pk=inst.plant_id or 0
+        )
 
 
 class BaseSectionFormSet(BaseInlineFormSet):
@@ -184,3 +190,26 @@ class QuickPartnerForm(forms.Form):
 
 class QuickFloorForm(forms.Form):
     name = forms.CharField(max_length=30)
+
+
+class SiteProfileForm(forms.ModelForm):
+    class Meta:
+        model = SiteProfile
+        fields = [
+            "address", "access_note", "unloading_contact_name", "unloading_contact_phone",
+            "has_corner_plate", "allowed_vehicle_types", "note",
+        ]
+        labels = {"access_note": "진입 안내", "has_corner_plate": "코너철판 있음", "note": "특이사항"}
+        widgets = {
+            "access_note": forms.Textarea(attrs={"rows": 3}),
+            "note": forms.Textarea(attrs={"rows": 3}),
+            "allowed_vehicle_types": forms.CheckboxSelectMultiple,
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        selected = list(self.instance.allowed_vehicle_types.values_list("pk", flat=True)) if self.instance.pk else []
+        self.fields["allowed_vehicle_types"].queryset = VehicleType.objects.filter(is_active=True) | VehicleType.objects.filter(
+            pk__in=selected
+        )
+        self.fields["allowed_vehicle_types"].required = False

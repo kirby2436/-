@@ -218,7 +218,7 @@ class ModelPropertyTests(TestCase):
 
 class AuthTests(TestCase):
     def test_login_required_redirect(self):
-        for name in ["schedule:home", "projects:list", "bom:index", "schedule:board"]:
+        for name in ["schedule:home", "projects:list", "bom:index", "schedule:board", "shipping:list"]:
             r = self.client.get(reverse(name))
             self.assertEqual(r.status_code, 302, name)
             self.assertIn("/accounts/login/", r["Location"])
@@ -234,7 +234,7 @@ class AuthTests(TestCase):
     def test_login_and_nav(self):
         User.objects.create_user("u1", password="pw12345!")
         self.assertTrue(self.client.login(username="u1", password="pw12345!"))
-        for name in ["schedule:home", "projects:list", "bom:index", "schedule:board"]:
+        for name in ["schedule:home", "projects:list", "bom:index", "schedule:board", "shipping:list"]:
             self.assertEqual(self.client.get(reverse(name)).status_code, 200, name)
         self.assertEqual(self.client.get(reverse("schedule:section", args=[999999])).status_code, 404)
         r = self.client.get(reverse("schedule:home"))

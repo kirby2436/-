@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}출하 취소{% endblock %}
+{% block extra_head %}{% include "shipping/master/_head.html" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><h1>출하 취소</h1><p class="muted small title-line">{{ shipment.title }}</p></div>
+</div>
+<div class="message message-warning">
+  취소하면 이 출하에 담은 부재의 수량이 남은 수량으로 되돌아갑니다.
+  {% if shipment.status == 'SHIPPED' %}이미 부여된 공급번호는 다시 쓰지 않습니다. 구간 완료 표시도 다시 계산됩니다.{% endif %}
+  취소한 출하는 되살릴 수 없습니다.
+</div>
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="card">
+    {% include "shipping/master/_field.html" with field=form.reason %}
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-danger">출하 취소</button>
+    <a class="btn" href="{% url 'shipping:detail' pk=shipment.pk %}">돌아가기</a>
+  </div>
+</form>
+{% endblock %}

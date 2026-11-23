@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}출고 실적{% endblock %}
+{% block extra_head %}<link rel="stylesheet" href="{% static 'shipping/report.css' %}?v=2">{% endblock %}
+{% block content %}
+<div class="page-header"><div class="page-title"><h1>출고 실적</h1><p class="page-sub">출하가 끝난 물량을 월별·프로젝트별·제작장별로 모아 봅니다.</p></div></div>
+{% include "shipping/report/_tabs.html" %}
+<form method="get" class="filter-bar" aria-label="출고 실적 필터">
+  {% include "shipping/report/_period_fields.html" %}
+  <div class="field"><label for="id_axis">집계 기준</label>
+    <select name="axis" id="id_axis">{% for v, l in form.fields.axis.choices %}<option value="{{ v }}"{% if v == axis %} selected{% endif %}>{{ l }}</option>{% endfor %}</select></div>
+  <div class="filter-actions"><button class="btn btn-primary" type="submit">조회</button> <a class="btn" href="{% url 'shipping:performance' %}">초기화</a></div>
+</form>
+{% if invalid %}<p class="field-error">입력값에 오류가 있어 기본 조건으로 조회했습니다.</p>{% endif %}
+<p class="muted small">출하 상태인 출하만 집계합니다. 기간 {{ start|date:"Y-m-d" }} ~ {{ end|date:"Y-m-d" }} · {{ axis_label }}</p>
+
+{% if rows %}
+<div class="only-desktop"><div class="table-wrap"><table class="table">
+  <thead><tr><th>{% if axis == "month" %}월{% elif axis == "project" %}프로젝트{% else %}제작장{% endif %}</th><th class="num">출하 건수</th><th class="num">차량 대수</th><th class="num">부재 수</th><th class="num">면적(㎡)</th><th></th></tr></thead>
+  <tbody>{% for r in rows %}
+    <tr><td>{{ r.label }}</td><td class="num">{{ r.shipments }}</td><td class="num">{{ r.trucks }}</td><td class="num">{{ r.qty }}</td><td class="num">{{ r.area|floatformat:2 }}</td>
+      <td><a href="{{ r.url }}">부재별 내역</a></td></tr>{% endfor %}
+  </tbody>
+  <tfoot><tr><td>합계</td><td class="num">{{ totals.shipments }}</td><td class="num">{{ totals.trucks }}</td><td class="num">{{ totals.qty }}</td><td class="num">{{ totals.area|floatformat:2 }}</td><td></td></tr></tfoot>
+</table></div></div>
+<div class="only-mobile"><ul class="card-list">{% for r in rows %}
+  <li class="card-item">
+    <div class="card-item-title">{{ r.label }}</div>
+    <dl class="kv"><dt>출하 건수</dt><dd>{{ r.shipments }}</dd><dt>차량 대수</dt><dd>{{ r.trucks }}</dd>
+      <dt>부재 수</dt><dd>{{ r.qty }}</dd><dt>면적</dt><dd>{{ r.area|floatformat:2 }}㎡</dd></dl>
+    <p style="margin:.5rem 0 0"><a href="{{ r.url }}">부재별 내역 보기</a></p>
+  </li>{% endfor %}</ul>
+  <div class="total-card">합계: 출하 {{ totals.shipments }}건 · 차량 {{ totals.trucks }}대 · 부재 {{ totals.qty }} · {{ totals.area|floatformat:2 }}㎡</div></div>
+{% else %}
+<div class="card"><p class="muted">이 기간에 출하된 실적이 없습니다. 출하를 확정하면 이곳에 집계됩니다. <a href="{% url 'shipping:list' %}">출하 목록으로 이동</a></p></div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,46 @@
+/* shipping screens (master data, shipments, loading). Uses the shared classes in core/app.css. */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 0 1rem; }
+.req { color: var(--danger); }
+.input-with-btn { display: flex; gap: .4rem; align-items: stretch; }
+.input-with-btn select { flex: 1 1 auto; min-width: 0; }
+.input-with-btn .btn { flex: 0 0 auto; white-space: nowrap; display: flex; align-items: center; }
+.field-check label { display: inline; }
+.field-check input[type=checkbox] { width: auto; min-height: 0; margin-right: .35rem; }
+.field-check { display: flex; align-items: center; gap: .4rem; flex-direction: row-reverse; justify-content: flex-end; flex-wrap: wrap; }
+.field-check .field-help, .field-check .field-error { flex: 1 1 100%; order: 3; }
+.kv-wide { grid-template-columns: max-content 1fr; }
+.card-actions { display: flex; gap: .5rem; margin-top: .6rem; }
+.card-actions .btn { flex: 1 1 0; }
+.title-line { overflow-wrap: anywhere; margin: .15rem 0 0; }
+
+/* loading screen: two columns on PC, stacked on phones */
+.load-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
+@media (min-width: 1500px) { .load-grid { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+.load-grid > .card { margin-bottom: 0; }
+.filter-inline { box-shadow: none; }
+.pool-bar { display: flex; flex-wrap: wrap; gap: .5rem .75rem; align-items: flex-end; margin-bottom: .6rem; }
+.pool-bar .field { margin: 0; flex: 1 1 140px; }
+.check-inline { display: inline-flex; gap: .4rem; align-items: center; font-weight: 600; min-height: 38px; }
+.check-inline input, .pool-table input[type=checkbox] { width: 18px; height: 18px; min-height: 0; }
+.qty-input { width: 5.5rem; min-height: 32px; padding: .2rem .4rem; text-align: right; }
+.load-total { margin: 0 0 .6rem; }
+.truck-box { border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem; margin-bottom: .75rem; min-width: 0; }
+.truck-box .card-title { margin-bottom: .5rem; flex-wrap: wrap; }
+.truck-tools { display: flex; gap: .4rem; flex-wrap: wrap; }
+.line-actions { white-space: nowrap; }
+.line-actions .inline-form { display: inline-flex; gap: .3rem; align-items: center; margin-right: .3rem; }
+.move-form select { width: auto; min-height: 30px; padding: .15rem .4rem; }
+
+/* tables turn into stacked rows on phones (no horizontal scroll) */
+@media (max-width: 720px) {
+  .stack-table thead { display: none; }
+  .stack-table, .stack-table tbody, .stack-table tr, .stack-table td, .stack-table tfoot, .stack-table tfoot th { display: block; width: 100%; }
+  .stack-table tr { border: 1px solid var(--border); border-radius: 14px; margin-bottom: .5rem; padding: .35rem .6rem; background: var(--surface); }
+  .stack-table td { border: 0; padding: .15rem 0; display: flex; justify-content: space-between; gap: .75rem; text-align: right; overflow-wrap: anywhere; }
+  .stack-table td::before { content: attr(data-label); color: var(--muted); font-size: .85rem; text-align: left; flex: 0 0 auto; }
+  .stack-table td.line-actions { flex-wrap: wrap; justify-content: flex-start; white-space: normal; }
+  .stack-table tfoot th { border: 0; text-align: right; padding: .25rem .5rem; }
+  .stack-table tfoot tr { background: transparent; border: 0; }
+  .page-header .actions { width: 100%; }
+}
+@media (min-width: 721px) { .pool-table td, .pool-table th { white-space: nowrap; } }

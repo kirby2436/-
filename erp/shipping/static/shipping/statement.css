@@ -1,0 +1,66 @@
+/* 거래명세서 인쇄 화면 (A4 세로, 차량 1대 = 1장). 화면 미리보기와 인쇄가 같은 크기 기준을 쓴다. */
+.st-toolbar { max-width: 210mm; margin: 0 auto 12px; }
+.st-select { max-width: 320px; }
+.st-select .field { margin-bottom: .5rem; }
+
+/* 휴대폰: A4 미리보기 영역 안에서만 가로 스크롤 */
+.st-scroll {
+  max-width: 100%; overflow-x: auto; margin: 0 auto 16px; padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.st-sheet {
+  position: relative; width: 210mm; min-width: 210mm; margin: 0 auto 12px; padding: 8mm 8mm 6mm;
+  box-sizing: border-box; background: #fff; color: #000; border: 1px solid var(--border);
+  box-shadow: var(--shadow); font-family: "Malgun Gothic", "맑은 고딕", "Gulim", "굴림", sans-serif;
+  font-size: 9pt;
+}
+.st-sheet:last-child { margin-bottom: 0; }
+
+.st { width: 100%; table-layout: fixed; border-collapse: collapse; border: 2px solid #000; }
+.st th, .st td {
+  border: 1px solid #000; height: 5.6mm; padding: 0 1mm; text-align: center; vertical-align: middle;
+  line-height: 1.15; font-weight: 400; overflow: hidden; white-space: nowrap; word-break: keep-all;
+}
+.st .lab { background: #f2f2f2; font-weight: 600; font-size: 9pt; }
+.st .party { font-size: 10pt; writing-mode: vertical-rl; text-orientation: upright; letter-spacing: .15em; padding: 0; }
+.st .recv { background: #ffff99; }
+.st .strong { font-weight: 700; }
+.st .big { font-size: 10.5pt; }
+.st .name { font-size: 12pt; }
+.st .small { font-size: 8pt; }
+.st .st-title { border: 2px solid #000; font-size: 18pt; font-weight: 700; height: 12mm; letter-spacing: .1em; }
+.st .h-title { height: 6mm; }
+.st .h-notice td { border: 0; border-left: 2px solid #000; border-right: 2px solid #000; height: 5.6mm; font-weight: 700; font-size: 11pt; color: #c00000; }
+.st .h-gap td { height: 1.6mm; padding: 0; border-left: 2px solid #000; border-right: 2px solid #000; }
+.st .colhead th { background: #f2f2f2; font-weight: 700; border-bottom: 1px solid #000; }
+.st .colhead + .colhead th { border-bottom: 3px double #000; }
+.st .r td { font-size: 9pt; }
+.st .r .l { text-align: left; }
+.st .r .fit { font-size: 8pt; text-overflow: clip; }
+.st .r .sm { font-size: 8pt; }
+.st .r .end { color: #000; letter-spacing: .1em; }
+.st .total td { border-top: 2px solid #000; font-weight: 700; font-size: 10pt; }
+.st .total .r-al { text-align: right; padding-right: 3mm; }
+.st-page { margin: 1.5mm 0 0; text-align: center; font-size: 8pt; }
+
+@media (max-width: 480px) {
+  .st-toolbar .actions .btn { flex: 1 1 auto; }
+}
+
+@media print {
+  @page { size: A4 portrait; margin: 8mm; }
+  html, body { background: #fff !important; }
+  .sidebar, .mbar, .scrim, .nav-toggle, .messages, .st-toolbar, noscript { display: none !important; }
+  .has-sidebar .app-main { margin-left: 0 !important; }
+  .container { max-width: none; margin: 0; padding: 0; }
+  .st-scroll { overflow: visible; max-width: none; margin: 0; padding: 0; }
+  .st-sheet {
+    width: auto; min-width: 0; margin: 0; padding: 0; border: 0; box-shadow: none;
+    break-after: page; page-break-after: always; break-inside: avoid;
+  }
+  .st-scroll:last-child .st-sheet:last-child { break-after: auto; page-break-after: auto; }
+  .st .lab, .st .recv, .st .colhead th {
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+}

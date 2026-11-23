@@ -4,30 +4,44 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ERP{% endblock %} - 건설자재 ERP</title>
-  <link rel="stylesheet" href="{% static 'core/app.css' %}">
+  <link rel="stylesheet" href="{% static 'core/app.css' %}?v=2">
   {% block extra_head %}{% endblock %}
+  <script src="{% static 'core/app.js' %}?v=2"></script>
 </head>
-<body>
+<body{% if user.is_authenticated %} class="has-sidebar"{% else %} class="no-sidebar"{% endif %}>
 {% if user.is_authenticated %}
-<header class="topbar">
-  <div class="topbar-inner">
-    <a class="brand" href="{% url 'schedule:home' %}">건설자재 ERP</a>
-    <nav class="nav" aria-label="주 메뉴">
-      {% with name=request.resolver_match.view_name %}
-      <a href="{% url 'schedule:home' %}"{% if name == 'schedule:home' %} class="active" aria-current="page"{% endif %}>홈</a>
-      <a href="{% url 'projects:list' %}"{% if request.resolver_match.app_name == 'projects' %} class="active" aria-current="page"{% endif %}>프로젝트</a>
-      <a href="{% url 'bom:index' %}"{% if request.resolver_match.app_name == 'bom' %} class="active" aria-current="page"{% endif %}>구간 BOM</a>
-      <a href="{% url 'schedule:board' %}"{% if name == 'schedule:board' or name == 'schedule:section' %} class="active" aria-current="page"{% endif %}>진행현황</a>
-      {% endwith %}
-    </nav>
-    <div class="nav-user">
+<input type="checkbox" id="nav-toggle" class="nav-toggle" aria-label="메뉴 열기 또는 닫기">
+<header class="mbar">
+  <label for="nav-toggle" class="mbar-btn" aria-label="메뉴 열기">{% include "core/_icon.html" with name="menu" %}</label>
+  <a class="mbar-brand" href="{% url 'schedule:home' %}">건설자재 ERP</a>
+</header>
+<label for="nav-toggle" class="scrim" aria-hidden="true"></label>
+<aside class="sidebar" id="sidebar">
+  <div class="sb-head">
+    <a class="sb-brand" href="{% url 'schedule:home' %}" title="건설자재 ERP">
+      <span class="sb-mark" aria-hidden="true">E</span><span class="sb-label">건설자재 ERP</span>
+    </a>
+    <button type="button" class="sb-collapse" id="sb-collapse" aria-label="사이드바 접기" aria-expanded="true" hidden>{% include "core/_icon.html" with name="chevron" %}</button>
+  </div>
+  <nav class="sb-nav" aria-label="주 메뉴">
+    {% for g in nav_groups %}
+    <div class="sb-group">
+      {% if g.title %}<div class="sb-group-title">{{ g.title }}</div>{% endif %}
+      {% for it in g.items %}<a href="{{ it.url }}" title="{{ it.label }}"{% if it.active %} class="active" aria-current="page"{% endif %}>{% include "core/_icon.html" with name=it.icon %}<span class="sb-label">{{ it.label }}</span></a>{% endfor %}
+    </div>
+    {% endfor %}
+  </nav>
+  <div class="sb-user">
+    <div class="sb-user-name"><span class="sb-avatar" aria-hidden="true">{{ user.get_username|slice:":1"|upper }}</span>
+      <span class="sb-label"><strong>{{ user.get_username }}</strong><small>{% if user.is_staff %}관리자{% else %}사용자{% endif %}</small></span></div>
+    <div class="sb-user-actions sb-label">
       {% if user.is_staff %}<a href="{% url 'admin:index' %}">관리</a>{% endif %}
-      <span class="muted small">{{ user.get_username }}</span>
       <form method="post" action="{% url 'logout' %}" class="inline-form">{% csrf_token %}<button type="submit" class="btn btn-sm">로그아웃</button></form>
     </div>
   </div>
-</header>
+</aside>
 {% endif %}
+<div class="app-main">
 <main class="container">
   {% if messages %}
   <ul class="messages" role="status">
@@ -36,6 +50,7 @@
   {% endif %}
   {% block content %}{% endblock %}
 </main>
+</div>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

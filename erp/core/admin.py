@@ -51,8 +51,8 @@ class ProjectAdmin(StampedAdmin):
 
 @admin.register(models.Section)
 class SectionAdmin(StampedAdmin):
-    list_display = ("project", "name", "floor", "planned_ship_date", "confirmed_ship_date", "is_completed", "make_type")
-    list_filter = ("make_type", "is_completed")
+    list_display = ("project", "name", "floor", "planned_ship_date", "confirmed_ship_date", "is_completed", "make_type", "plant")
+    list_filter = ("make_type", "is_completed", "plant")
     search_fields = ("name", "project__name", "project__code")
 
 
@@ -89,9 +89,70 @@ class BomUploadAdmin(StampedAdmin):
 
 @admin.register(models.BomItem)
 class BomItemAdmin(StampedAdmin):
-    list_display = ("section", "ass_mark", "profile_text", "product", "length_mm", "quantity", "finish", "location")
+    list_display = ("section", "ass_mark", "profile_text", "product", "length_mm", "quantity", "unit_area", "member_kind", "finish", "location")
+    list_filter = ("member_kind",)
     search_fields = ("ass_mark", "profile_text", "section__name", "section__project__name")
     raw_id_fields = ("section", "upload", "product")
+
+
+@admin.register(models.Plant)
+class PlantAdmin(StampedAdmin):
+    list_display = ("name", "site", "operator", "is_active", "sort_order")
+    list_filter = ("is_active",)
+    list_editable = ("sort_order", "is_active")
+    search_fields = ("name", "site", "operator__name")
+    raw_id_fields = ("operator",)
+
+
+@admin.register(models.Carrier)
+class CarrierAdmin(StampedAdmin):
+    list_display = ("name", "phone", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("name",)
+
+
+@admin.register(models.VehicleType)
+class VehicleTypeAdmin(StampedAdmin):
+    list_display = ("name", "sort_order", "is_active")
+    list_editable = ("sort_order", "is_active")
+
+
+@admin.register(models.SiteProfile)
+class SiteProfileAdmin(StampedAdmin):
+    list_display = ("project", "address", "unloading_contact_name", "has_corner_plate")
+    search_fields = ("project__name", "project__code", "address")
+    raw_id_fields = ("project",)
+    filter_horizontal = ("allowed_vehicle_types",)
+
+
+class ShipmentTruckInline(admin.TabularInline):
+    model = models.ShipmentTruck
+    extra = 0
+    readonly_fields = ("supply_no",)
+
+
+@admin.register(models.Shipment)
+class ShipmentAdmin(StampedAdmin):
+    list_display = ("ship_date", "project", "plant", "status", "dispatcher")
+    list_filter = ("status", "plant")
+    search_fields = ("project__name", "project__code", "trucks__supply_no")
+    raw_id_fields = ("project",)
+    inlines = [ShipmentTruckInline]
+
+
+class ShipmentLineInline(admin.TabularInline):
+    model = models.ShipmentLine
+    extra = 0
+    raw_id_fields = ("bom_item",)
+
+
+@admin.register(models.ShipmentTruck)
+class ShipmentTruckAdmin(StampedAdmin):
+    list_display = ("shipment", "seq", "supply_no", "carrier", "vehicle_type", "plate_no")
+    search_fields = ("supply_no", "plate_no", "shipment__project__name")
+    readonly_fields = ("supply_no",)
+    raw_id_fields = ("shipment",)
+    inlines = [ShipmentLineInline]
 
 
 @admin.register(models.ActivityType)

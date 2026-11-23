@@ -392,3 +392,195 @@ class RequirementTests(BomBase):
         self.assertEqual((s.bom_count, s.unresolved_count), (1, 1))
         r = self.client.get(reverse("bom:index"), {"q": "없는이름"})
         self.assertEqual(len(r.context["page"].object_list), 0)
+
+
+class AreaColumnTests(BomBase):
+    def make(self, **kw):
+        defaults = dict(section=self.section, ass_mark="A1", profile_text="DH400X450", length_mm=Decimal("5640"), quantity=2)
+        defaults.update(kw)
+        return BomItem.objects.create(**defaults)
+
+    def test_columns_and_total_area(self):
+        a = self.make()  # 400 + 450 + 450 = 1300 x 5.64 = 7.332 -> 7.34 per piece
+        b = self.make(ass_mark="A2", profile_text="NBL400X450", length_mm=Decimal("1000"), quantity=3)  # 0.85 x 3
+        self.assertEqual(a.unit_area, Decimal("7.34"))
+        r = self.client.get(reverse("bom:section", args=[self.section.pk]))
+        self.assertEqual(r.status_code, 200)
+        for text in ("하판 폭", "측판1 폭", "측판2 폭", "면적(㎡/개)", "보 구분", "출하 수량", "남은 수량"):
+            self.assertContains(r, text)
+        rows = {it.pk: it for it in r.context["page"]}
+        self.assertEqual(rows[a.pk].line_area, Decimal("14.68"))
+        self.assertEqual(rows[b.pk].line_area, Decimal("2.55"))
+        self.assertEqual(r.context["totals"]["area"], Decimal("17.23"))
+        self.assertEqual(r.context["totals"]["unknown_area"], 0)
+        self.assertContains(r, "총 면적 17.23")
+        self.assertNotContains(r, "규격 확인 필요")
+
+    def test_unknown_area_row_flagged_and_excluded(self):
+        self.make()
+        bad = self.make(ass_mark="A9", profile_text="특수규격", quantity=1)
+        self.assertIsNone(bad.unit_area)
+        r = self.client.get(reverse("bom:section", args=[self.section.pk]))
+        self.assertContains(r, "규격 확인 필요")
+        self.assertEqual(r.context["totals"]["unknown_area"], 1)
+        self.assertEqual(r.context["totals"]["area"], Decimal("14.68"))
+
+    def test_shipped_and_remaining_columns_without_per_row_queries(self):
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        from core.models import Shipment, ShipmentLine, ShipmentTruck
+
+        items = [self.make(ass_mark=f"M{i}", quantity=5) for i in range(6)]
+        ship = Shipment.objects.create(project=self.project, ship_date=date(2026, 4, 1))
+        truck = ShipmentTruck.objects.create(shipment=ship, seq=1)
+        ShipmentLine.objects.create(truck=truck, bom_item=items[0], quantity=2)
+        canceled = Shipment.objects.create(project=self.project, ship_date=date(2026, 4, 2), status="CANCELED")
+        ShipmentLine.objects.create(
+            truck=ShipmentTruck.objects.create(shipment=canceled, seq=1), bom_item=items[1], quantity=4
+        )
+        url = reverse("bom:section", args=[self.section.pk])
+        with CaptureQueriesContext(connection) as small:
+            self.client.get(url)
+        for i in range(6, 30):
+            self.make(ass_mark=f"M{i}", quantity=5)
+        with CaptureQueriesContext(connection) as big:
+            r = self.client.get(url)
+        self.assertEqual(len(small), len(big))
+        rows = {it.ass_mark: it for it in r.context["page"]}
+        self.assertEqual((rows["M0"].shipped_total, rows["M0"].remaining), (2, 3))
+        self.assertEqual((rows["M1"].shipped_total, rows["M1"].remaining), (0, 5))  # canceled does not count
+
+
+class ItemSpecTests(BomBase):
+    def make(self, **kw):
+        defaults = dict(section=self.section, ass_mark="A1", profile_text="특수규격", length_mm=Decimal("2000"), quantity=1)
+        defaults.update(kw)
+        return BomItem.objects.create(**defaults)
+
+    def url(self, item):
+        return reverse("bom:item_spec", args=[item.pk])
+
+    def test_anonymous_redirects(self):
+        item = self.make()
+        self.client.logout()
+        r = self.client.get(self.url(item))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/accounts/login/", r["Location"])
+        self.client.post(self.url(item), {"bottom_width": 500})
+        item.refresh_from_db()
+        self.assertIsNone(item.bottom_width)
+
+    def test_manual_widths_saved_and_unit_area_stored(self):
+        item = self.make()
+        self.assertContains(self.client.get(self.url(item)), "직접 입력")
+        r = self.client.post(
+            self.url(item),
+            {"bottom_width": 500, "side1_width": 300, "side2_width": 200, "member_kind": "BEAM"},
+        )
+        self.assertEqual(r.status_code, 302)
+        item.refresh_from_db()
+        self.assertEqual((item.bottom_width, item.side1_width, item.side2_width), (500, 300, 200))
+        self.assertEqual(item.unit_area, Decimal("2.00"))  # 1000 mm x 2.0 m
+        self.assertEqual(item.member_kind, "BEAM")
+        self.assertEqual(item.updated_by, self.user)
+        log = AuditLog.objects.filter(model="core.BomItem", action="update").latest("id")
+        self.assertIn("unit_area", log.changes)
+        page = self.client.get(reverse("bom:section", args=[self.section.pk]))
+        self.assertNotContains(page, "규격 확인 필요")
+
+    def test_invalid_values_rejected(self):
+        item = self.make()
+        r = self.client.post(self.url(item), {"bottom_width": -5})
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "field-error")
+        r = self.client.post(self.url(item), {"bottom_width": "", "side1_width": 300})
+        self.assertContains(r, "하판 폭도 입력")
+        r = self.client.post(self.url(item), {"member_kind": "WALL"})
+        self.assertEqual(r.status_code, 200)
+        item.refresh_from_db()
+        self.assertIsNone(item.bottom_width)
+        self.assertEqual(item.member_kind, "")
+
+    def test_readable_profile_ignores_width_input_but_saves_kind(self):
+        item = self.make(profile_text="DH400X450")
+        self.assertEqual((item.bottom_width, item.side1_width, item.side2_width), (400, 450, 450))
+        r = self.client.get(self.url(item))
+        self.assertContains(r, "disabled")
+        self.client.post(
+            self.url(item),
+            {"bottom_width": 999, "side1_width": 999, "side2_width": 999, "member_kind": "GIRDER"},
+        )
+        item.refresh_from_db()
+        self.assertEqual((item.bottom_width, item.side1_width, item.side2_width), (400, 450, 450))
+        self.assertEqual(item.unit_area, Decimal("2.60"))
+        self.assertEqual(item.member_kind, "GIRDER")
+
+    def test_clearing_kind(self):
+        item = self.make(member_kind="BEAM")
+        self.client.post(self.url(item), {"bottom_width": 100, "member_kind": ""})
+        item.refresh_from_db()
+        self.assertEqual(item.member_kind, "")
+
+
+class ShipmentProtectionTests(BomBase):
+    def setUp(self):
+        super().setUp()
+        from core.models import Shipment, ShipmentLine, ShipmentTruck
+
+        self.confirm(self.upload_xlsx([["A", "DH400X450", 1000, 2], ["B", "DH400X450", 1000, 1]]))
+        self.a, self.b = BomItem.objects.order_by("id")
+        self.ship = Shipment.objects.create(project=self.project, ship_date=date(2026, 4, 1))
+        truck = ShipmentTruck.objects.create(shipment=self.ship, seq=1)
+        ShipmentLine.objects.create(truck=truck, bom_item=self.a, quantity=1)
+
+    def test_preview_locks_replace(self):
+        r = self.upload_xlsx([["C", "DH400X450", 1000, 1]])
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.context["replace_locked"])
+        self.assertContains(r, "출하에 담긴 부재가 있어 추가 등록만 할 수 있습니다")
+        self.assertRegex(r.content.decode(), r'value="replace"[^>]*disabled')
+
+    def test_replace_rejected_on_server(self):
+        r = self.upload_xlsx([["C", "DH400X450", 1000, 1]])
+        resp = self.confirm(r, mode="replace", confirm_replace="on")
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "출하에 담긴 부재가 있어 추가 등록만 할 수 있습니다")
+        self.assertEqual(sorted(BomItem.objects.values_list("ass_mark", flat=True)), ["A", "B"])
+
+    def test_service_guard_converts_protected_error(self):
+        rows = [services.clean_row({"ass_mark": "C", "profile": "P", "length": 1, "qty": 1})]
+        with self.assertRaises(services.BomParseError):
+            services.save_upload(self.section, rows, "x.xlsx", services.MODE_REPLACE, self.user)
+        self.assertEqual(BomItem.objects.count(), 2)
+
+    def test_append_still_allowed(self):
+        r = self.upload_xlsx([["C", "DH400X450", 1000, 1]])
+        self.assertEqual(self.confirm(r, mode="append").status_code, 302)
+        self.assertEqual(BomItem.objects.count(), 3)
+
+    def test_canceled_shipment_still_locks(self):
+        self.ship.status = "CANCELED"
+        self.ship.save()
+        r = self.upload_xlsx([["C", "DH400X450", 1000, 1]])
+        resp = self.confirm(r, mode="replace", confirm_replace="on")
+        self.assertContains(resp, "추가 등록만 할 수 있습니다")
+
+    def test_replace_allowed_without_shipments(self):
+        from core.models import Shipment
+
+        Shipment.objects.all().delete()
+        r = self.upload_xlsx([["C", "DH400X450", 1000, 1]])
+        self.assertFalse(r.context["replace_locked"])
+        self.assertEqual(self.confirm(r, mode="replace", confirm_replace="on").status_code, 302)
+        self.assertEqual(list(BomItem.objects.values_list("ass_mark", flat=True)), ["C"])
+
+    def test_row_delete_blocked_for_shipped_row_only(self):
+        resp = self.client.post(reverse("bom:item_delete", args=[self.a.pk]), follow=True)
+        self.assertContains(resp, "출하에 담긴 부재라 삭제할 수 없습니다")
+        self.assertTrue(BomItem.objects.filter(pk=self.a.pk).exists())
+        self.assertFalse(AuditLog.objects.filter(action="delete", model="core.BomItem").exists())
+        page = self.client.get(reverse("bom:section", args=[self.section.pk]))
+        self.assertContains(page, "출하에 담김")
+        self.client.post(reverse("bom:item_delete", args=[self.b.pk]))
+        self.assertFalse(BomItem.objects.filter(pk=self.b.pk).exists())

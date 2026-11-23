@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}{{ truck.seq }}호차 운송 정보{% endblock %}
+{% block extra_head %}{% include "shipping/master/_head.html" %}{% endblock %}
+{% block content %}
+{% url 'shipping:carrier_create' as carrier_add_url %}
+{% url 'shipping:vehicle_type_create' as vehicle_add_url %}
+<div class="page-header">
+  <div><h1>{{ truck.seq }}호차 운송 정보</h1>
+  <p class="muted small title-line">{{ shipment.title }}</p></div>
+</div>
+{% if warning %}<div class="message message-warning">{{ warning }}</div>{% endif %}
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% for e in form.non_field_errors %}<div class="message message-error">{{ e }}</div>{% endfor %}
+  <div class="card">
+    <div class="form-grid">
+      {% include "shipping/master/_field.html" with field=form.carrier quick_url=carrier_add_url %}
+      {% include "shipping/master/_field.html" with field=form.vehicle_type quick_url=vehicle_add_url %}
+      {% include "shipping/master/_field.html" with field=form.plate_no %}
+      {% include "shipping/master/_field.html" with field=form.driver_name %}
+      {% include "shipping/master/_field.html" with field=form.driver_phone %}
+      {% include "shipping/master/_field.html" with field=form.load_note %}
+    </div>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">저장</button>
+    <a class="btn" href="{% url 'shipping:detail' pk=shipment.pk %}">취소</a>
+  </div>
+</form>
+{% endblock %}

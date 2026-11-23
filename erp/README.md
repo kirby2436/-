@@ -1,6 +1,6 @@
-# 건설자재 ERP (1차 버전)
+# 건설자재 ERP (2차 버전)
 
-프로젝트·구간 등록, 구간 BOM 업로드, 진행현황 조회를 다루는 내부 ERP 1차 버전입니다.
+프로젝트·구간 등록, 구간 BOM 업로드, 진행현황 조회에 출하 기능을 더한 내부 ERP입니다.
 
 ## 요구 사항
 
@@ -8,12 +8,16 @@
 
 ## 로컬 실행
 
+Windows에서는 기본 `python`이 Django가 설치되지 않은 다른 파이썬으로 잡힐 수 있습니다. 그래서 `py -3.13`으로 실행하는 것을 권장합니다.
+
 ```bash
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py seed_demo
-python manage.py runserver
+py -3.13 -m pip install -r requirements.txt
+py -3.13 manage.py migrate
+py -3.13 manage.py seed_demo
+py -3.13 manage.py runserver
 ```
+
+1차 버전을 쓰고 있었다면 업데이트 후 `py -3.13 manage.py migrate`를 한 번 실행해야 합니다. 출하 관련 테이블이 추가됩니다.
 
 브라우저에서 http://127.0.0.1:8000 에 접속한 뒤 데모 계정으로 로그인합니다.
 
@@ -23,20 +27,53 @@ python manage.py runserver
 | demo1 | demo1234 | 일반 사용자 |
 | demo2 | demo1234 | 일반 사용자 |
 
-`seed_demo`는 여러 번 실행해도 데이터가 중복 생성되지 않습니다.
+`seed_demo`는 여러 번 실행해도 데이터가 중복 생성되지 않습니다. 제작장·운송회사·현장개요·구간 BOM과 출하 예시(확정·예정·취소)를 함께 만듭니다. 출하 예시는 출하 데이터가 하나도 없을 때만 만듭니다.
+
+## 출하 기능 (2차)
+
+출하 목록 화면에서 다음 기능으로 들어갑니다.
+
+- **기준정보**: 제작장, 운송회사, 차종을 관리합니다. 제작장에는 사내/외주 운영 업체를 지정합니다.
+- **출하 등록**: 프로젝트와 제작장, 출하일을 정해 출하 예정을 만듭니다.
+- **상차 편성**: 예정 출하에 차량(호차)을 추가하고 구간 BOM 부재와 수량을 담습니다. 한 부재를 여러 차량에 나눠 실을 수 있습니다.
+- **거래명세서**: 출하 상세 화면에서 전체 또는 차량별 거래명세서를 봅니다. 부재가 많으면 여러 쪽으로 나옵니다.
+- **출고 실적**, **미출고 부재**: 출하 현황과 아직 출하되지 않은 부재를 조회합니다.
+
+출하를 확정하면 차량마다 공급번호(`NEO-YYYY-MM-DD-NN`)가 붙고, 부재의 면적이 저장됩니다. 면적을 계산할 수 없는 부재(Profile 규격 확인 필요)는 확정할 수 없습니다. 모든 부재가 출하되면 해당 구간은 자동으로 완료됩니다. 취소한 출하의 공급번호는 다시 쓰지 않습니다.
+
+## 환경변수
+
+| 변수 | 설명 |
+| --- | --- |
+| `ERP_DB_PATH` | 사용할 SQLite 파일 경로. 없으면 `erp/db.sqlite3`를 씁니다. 검증용 DB를 따로 만들 때 씁니다. |
+| `ERP_COMPANY_NAME` | 거래명세서에 찍히는 공급자 상호 |
+| `ERP_COMPANY_ADDRESS` | 거래명세서에 찍히는 공급자 주소 |
+| `ERP_COMPANY_PHONE` | 거래명세서에 찍히는 공급자 연락처 |
+| `ERP_COMPANY_FAX` | 거래명세서에 찍히는 공급자 팩스 |
+
+회사 정보는 환경변수로만 넣고, 저장소 파일에는 실제 값을 쓰지 않습니다. 값이 없으면 거래명세서의 상호는 `(회사명)`으로 나옵니다.
+
+```bash
+# Git Bash 예시: 검증용 별도 DB 사용
+export ERP_DB_PATH="C:/path/to/demo.sqlite3"
+py -3.13 manage.py migrate
+py -3.13 manage.py seed_demo
+```
 
 ## 테스트
 
 ```bash
-python manage.py test
+py -3.13 manage.py test
 ```
+
+테스트는 환경변수와 상관없이 별도의 테스트 DB를 씁니다.
 
 ## 샘플 BOM 파일
 
 `samples/sample_bom.xlsx` 에 BOM 업로드 테스트용 샘플이 있습니다. 파일을 다시 만들려면 다음을 실행합니다.
 
 ```bash
-python samples/make_sample_bom.py
+py -3.13 samples/make_sample_bom.py
 ```
 
 ## 주의
